@@ -470,8 +470,11 @@ def build_readme(ctx_path, lib):
         rows = []
 
         def linker(owner, method, _a=a):
+            # (url without anchor, title "owner#method"): GitHub and the IDEA preview open the file and show the
+            # title as tooltip; the IDEA plugin reads the method from the title. A '#method' in the URL would
+            # make the Markdown plugin look for a header and fail.
             r_ = lib.resolve(owner, ctx_dir)
-            return ("%s#%s" % (rel(r_[0]), method)) if r_ else None
+            return ('%s "%s#%s"' % (rel(r_[0]), owner, method)) if r_ else None
 
         walk(methods, rtype if a == start else None, arch, opt, rows, linker=linker, model_name=a)
         rows = dedupe(rows)

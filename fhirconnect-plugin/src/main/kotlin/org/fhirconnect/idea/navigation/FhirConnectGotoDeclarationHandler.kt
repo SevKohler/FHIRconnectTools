@@ -58,7 +58,7 @@ class FhirConnectGotoDeclarationHandler : GotoDeclarationHandler {
     }
 
     private val tokenChars = Regex("[A-Za-z0-9_.#\\-]")
-    private val mdLink = Regex("\\[([^\\]]*)\\]\\(([^)\\s]+)\\)")
+    private val mdLink = Regex("\\[([^\\]]*)\\]\\(([^)\\s]+)(?:\\s+\"([^\"]*)\")?\\)")
 
     /**
      * Any other file (Markdown READMEs, alignment tables, reports, plain text), see
@@ -81,7 +81,10 @@ class FhirConnectGotoDeclarationHandler : GotoDeclarationHandler {
             if (offset < from || offset > to) continue
             val target = m.groupValues[2]
             val path = target.substringBefore('#')
-            val anchor = target.substringAfter('#', "")
+            // the method: URL anchor (#method), else the link title ("name#method"), else the link text (`name#method`)
+            val title = m.groupValues[3]
+            val linkText = m.groupValues[1].trim('`', ' ')
+            val anchor = target.substringAfter('#', "").ifEmpty { title.substringAfter('#', "") }.ifEmpty { linkText.substringAfter('#', "") }
             val base = file.virtualFile?.parent ?: return null
             val vf = base.findFileByRelativePath(path) ?: continue
             val psi = PsiManager.getInstance(project).findFile(vf) ?: continue

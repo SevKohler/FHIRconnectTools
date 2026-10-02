@@ -53,7 +53,7 @@ Default is the short form. Switch to the full form only when the user asks for d
 Review: <file or folder> — linter <n> errors / <m> warnings
 
 Blocking
-- [`<name>#<method>`](<relative path>#<method>) — <what breaks> → <fix in a few words>
+- [`<name>#<method>`](<relative path>) — <what breaks> → <fix in a few words>
 Wrong data / loss
 - ...
 Not mapped
@@ -70,7 +70,7 @@ Want the full report, the YAML fixes, or detail on one item?
 Linter: <n> errors, <m> warnings (summary of categories)
 
 ### Blocking (mapping will not run or writes wrong data)
-1. [`<name>#<method>`](<relative path>#<method>) — <what happens at runtime>. Fix:
+1. [`<name>#<method>`](<relative path>) — <what happens at runtime>. Fix:
    ```yaml
    ...
    ```
@@ -87,4 +87,4 @@ Linter: <n> errors, <m> warnings (summary of categories)
 
 Order by severity, one item per finding, each with the concrete fix. Offer to apply the fixes to the
 files and re-run the linter. Mapping and method references follow `references/markdown-links.md`
-(`[name#method](path#method)`), so they are clickable on GitHub, in the IDEA preview and in the editor.
+(`[name#method](path)`), so they are clickable on GitHub, in the IDEA preview and in the editor.
