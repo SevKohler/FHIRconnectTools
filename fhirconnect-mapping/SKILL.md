@@ -114,7 +114,8 @@ Use `references/review.md` (checklist + report format). Steps:
 5. **Write** using `assets/templates/*.template.yml` as skeletons, `references/cookbook.md` for idioms,
    `references/worked-example.md` as a complete model + extension + context example. Follow the
    library layout (`model/<rm_type>/<namespace>/concept.vN.yml`, `projects/<ns>/<project>/<module>/`),
-   naming (`TYPE.concept.vN[.FhirType]`), `grammar: FHIRConnect/v1.0.0`, quoted versions.
+   naming (`TYPE.concept.vN[.FhirType]`), `grammar: FHIRConnect/v1.0.0`. No quotes unless YAML needs them: numeric-looking strings
+   (`"271"`, `"1.0"`), `true/false/yes/no/null` as text, values containing `: ` or ` #`, leading `*`, `!`, `&`, `[`, `{`.
 6. **Validate and review** (Review mode) and hand over: files, what is not mapped and why, template
    assumptions, open questions. If openFHIR is available (Docker `openfhir/openfhir`, sandbox
    https://sandbox.open-fhir.com): `POST /opt`, `POST /fc/model`, `POST /fc/context`, then

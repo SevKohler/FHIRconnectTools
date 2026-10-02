@@ -2,13 +2,13 @@ grammar: FHIRConnect/v1.0.0
 type: model
 metadata:
   name: TYPE.concept.vN                       # archetype id without openEHR-EHR-; add .FhirType for alternative targets
-  version: "0.0.1-alpha"
+  version: 0.0.1-alpha
 spec:
   system: FHIR
   version: R4
   openEhrConfig:
     archetype: openEHR-EHR-TYPE.concept.vN
-    revision: "x.y.z"                         # archetype revision mapped
+    revision: x.y.z                         # archetype revision mapped
   fhirConfig:
     structureDefinition: http://hl7.org/fhir/StructureDefinition/ResourceName   # or BackboneElement for CLUSTERs
 
@@ -27,66 +27,66 @@ spec:
 #         create: "resource"
 
 mappings:
-  - name: "composer"
+  - name: composer
     with:
-      fhir: "$resource.<recorder|performer|asserter>"
-      openehr: "$composition/composer"
+      fhir: $resource.<recorder|performer|asserter>
+      openehr: $composition/composer
 
-  - name: "contextStartTime"
+  - name: contextStartTime
     with:
-      fhir: "$resource.<recordedDate|effective|issued>"
-      openehr: "$composition/context/start_time"
+      fhir: $resource.<recordedDate|effective|issued>
+      openehr: $composition/context/start_time
 
-  - name: "exampleDirect"
+  - name: exampleDirect
     with:
-      fhir: "$resource.code"
-      openehr: "$archetype/data[at0001]/items[at0002]"
+      fhir: $resource.code
+      openehr: $archetype/data[at0001]/items[at0002]
 
-  - name: "exampleChoiceType"
+  - name: exampleChoiceType
     with:
-      fhir: "$resource"
-      openehr: "$archetype"
-      type: "NONE"
+      fhir: $resource
+      openehr: $archetype
+      type: NONE
     followedBy:
       mappings:
-        - name: "asDateTime"
+        - name: asDateTime
           with:
-            fhir: "onset.ofType(DateTime)"
-            openehr: "data[at0001]/items[at0077]"
-        - name: "asPeriod"
+            fhir: onset.ofType(DateTime)
+            openehr: data[at0001]/items[at0077]
+        - name: asPeriod
           with:
-            fhir: "onset.ofType(Period).start"
-            openehr: "data[at0001]/items[at0077]"
+            fhir: onset.ofType(Period).start
+            openehr: data[at0001]/items[at0077]
 
-  - name: "exampleSlot"
+  - name: exampleSlot
     with:
-      fhir: "$resource.bodySite"
-      openehr: "$archetype/data[at0001]/items[openEHR-EHR-CLUSTER.anatomical_location.v1]"
-    slotArchetype: "CLUSTER.anatomical_location.v1"
+      fhir: $resource.bodySite
+      openehr: $archetype/data[at0001]/items[openEHR-EHR-CLUSTER.anatomical_location.v1]
+    slotArchetype: CLUSTER.anatomical_location.v1
 
-  - name: "exampleStatusTable"
+  - name: exampleStatusTable
     with:
-      fhir: "$resource"
-      openehr: "$archetype/data[at0001]/items[at0004]"
+      fhir: $resource
+      openehr: $archetype/data[at0001]/items[at0004]
     manual:
-      - name: "active"
+      - name: active
         fhir:
-          - path: "clinicalStatus.coding.code"
-            value: "active"
+          - path: clinicalStatus.coding.code
+            value: active
         openehrCondition:
-          targetRoot: "$openehrRoot"
-          targetAttribute: "defining_code/code_string"
-          operator: "one of"
-          criteria: "at0026"
+          targetRoot: $openehrRoot
+          targetAttribute: defining_code/code_string
+          operator: one of
+          criteria: at0026
         openehr:
-          - path: "defining_code/terminology_id"
-            value: "local"
-          - path: "defining_code/code_string"
-            value: "at0026"
-          - path: "value"
-            value: "Active"
+          - path: defining_code/terminology_id
+            value: local
+          - path: defining_code/code_string
+            value: at0026
+          - path: value
+            value: Active
         fhirCondition:
-          targetRoot: "$fhirRoot"
-          targetAttribute: "clinicalStatus.coding.code"
-          operator: "one of"
-          criteria: "active"
+          targetRoot: $fhirRoot
+          targetAttribute: clinicalStatus.coding.code
+          operator: one of
+          criteria: active

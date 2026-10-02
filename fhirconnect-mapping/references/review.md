@@ -38,7 +38,7 @@ catch semantics. Always run the linter first with `--lib <mapping-lib>` so names
 - [ ] Base-resource content in the model, profile/template specifics in the extension; library models
       reused instead of re-implemented.
 - [ ] Naming: `TYPE.concept.vN[.FhirType]`, folder by RM type and namespace, `grammar: FHIRConnect/v1.0.0`,
-      quoted versions, `revision` recorded.
+      `revision` recorded, no quotes except where YAML needs them (numeric-looking strings, booleans as text, `: `, ` #`).
 - [ ] Methods do one thing; names camelCase and meaningful (they are the overwrite/append handles).
 - [ ] Comments explain non-obvious decisions (why unidirectional, why this node wins, what the
       programmed mapping does).

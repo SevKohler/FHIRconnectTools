@@ -55,153 +55,153 @@ grammar: FHIRConnect/v1.0.0
 type: model
 metadata:
   name: OBSERVATION.blood_pressure.v2
-  version: "0.0.1-alpha"
+  version: 0.0.1-alpha
 spec:
   system: FHIR
   version: R4
   openEhrConfig:
     archetype: openEHR-EHR-OBSERVATION.blood_pressure.v2
-    revision: "2.0.1"
+    revision: 2.0.1
   fhirConfig:
     structureDefinition: http://hl7.org/fhir/StructureDefinition/Observation
 
 preprocessor:
   hierarchy:                      # one Observation per blood pressure event
     with:
-      fhir: "$resource"
-      openehr: "$archetype/data[at0001]/events[at0006]"
+      fhir: $resource
+      openehr: $archetype/data[at0001]/events[at0006]
     split:
       fhir:
-        create: "resource"
+        create: resource
 
 mappings:
-  - name: "composer"
+  - name: composer
     with:
-      fhir: "$resource.performer"
-      openehr: "$composition/composer"
+      fhir: $resource.performer
+      openehr: $composition/composer
 
-  - name: "status"                 # archetype has no status; FHIR requires one
-    unidirectional: "openehr->fhir"
+  - name: status                 # archetype has no status; FHIR requires one
+    unidirectional: openehr->fhir
     with:
-      fhir: "$resource"
-      openehr: "$archetype"
+      fhir: $resource
+      openehr: $archetype
     manual:
-      - name: "final"
+      - name: final
         fhir:
-          - path: "status"
-            value: "final"
+          - path: status
+            value: final
 
-  - name: "code"
-    unidirectional: "openehr->fhir"
+  - name: code
+    unidirectional: openehr->fhir
     with:
-      fhir: "$resource.code.coding"
-      openehr: "$archetype"
+      fhir: $resource.code.coding
+      openehr: $archetype
     manual:
-      - name: "loincPanel"
+      - name: loincPanel
         fhir:
-          - path: "system"
-            value: "http://loinc.org"
-          - path: "code"
-            value: "85354-9"
-          - path: "display"
-            value: "Blood pressure panel with all children optional"
+          - path: system
+            value: http://loinc.org
+          - path: code
+            value: 85354-9
+          - path: display
+            value: Blood pressure panel with all children optional
 
-  - name: "event"
+  - name: event
     with:
-      fhir: "$resource"
-      openehr: "$archetype/data[at0001]/events[at0006]"
-      type: "NONE"
+      fhir: $resource
+      openehr: $archetype/data[at0001]/events[at0006]
+      type: NONE
     followedBy:
       mappings:
-        - name: "eventTime"
+        - name: eventTime
           with:
-            fhir: "effective"
-            openehr: "$openehrRoot"           # EVENT.time; Period -> INTERVAL_EVENT
+            fhir: effective
+            openehr: $openehrRoot           # EVENT.time; Period -> INTERVAL_EVENT
 
-        - name: "systolic"
+        - name: systolic
           with:
-            fhir: "component"
-            openehr: "data[at0003]/items[at0004]"
+            fhir: component
+            openehr: data[at0003]/items[at0004]
           fhirCondition:
-            targetRoot: "component"
-            targetAttribute: "code.coding.code"
-            operator: "one of"
-            criteria: "8480-6"
+            targetRoot: component
+            targetAttribute: code.coding.code
+            operator: one of
+            criteria: 8480-6
           followedBy:
             mappings:
-              - name: "systolicValue"
+              - name: systolicValue
                 with:
-                  fhir: "value.ofType(Quantity)"
-                  openehr: "$openehrRoot"
-              - name: "systolicCode"
-                unidirectional: "openehr->fhir"
+                  fhir: value.ofType(Quantity)
+                  openehr: $openehrRoot
+              - name: systolicCode
+                unidirectional: openehr->fhir
                 with:
-                  fhir: "code.coding"
+                  fhir: code.coding
                 manual:
-                  - name: "loinc"
+                  - name: loinc
                     fhir:
-                      - path: "system"
-                        value: "http://loinc.org"
-                      - path: "code"
-                        value: "8480-6"
-                      - path: "display"
-                        value: "Systolic blood pressure"
+                      - path: system
+                        value: http://loinc.org
+                      - path: code
+                        value: 8480-6
+                      - path: display
+                        value: Systolic blood pressure
 
-        - name: "diastolic"
+        - name: diastolic
           with:
-            fhir: "component"
-            openehr: "data[at0003]/items[at0005]"
+            fhir: component
+            openehr: data[at0003]/items[at0005]
           fhirCondition:
-            targetRoot: "component"
-            targetAttribute: "code.coding.code"
-            operator: "one of"
-            criteria: "8462-4"
+            targetRoot: component
+            targetAttribute: code.coding.code
+            operator: one of
+            criteria: 8462-4
           followedBy:
             mappings:
-              - name: "diastolicValue"
+              - name: diastolicValue
                 with:
-                  fhir: "value.ofType(Quantity)"
-                  openehr: "$openehrRoot"
-              - name: "diastolicCode"
-                unidirectional: "openehr->fhir"
+                  fhir: value.ofType(Quantity)
+                  openehr: $openehrRoot
+              - name: diastolicCode
+                unidirectional: openehr->fhir
                 with:
-                  fhir: "code.coding"
+                  fhir: code.coding
                 manual:
-                  - name: "loinc"
+                  - name: loinc
                     fhir:
-                      - path: "system"
-                        value: "http://loinc.org"
-                      - path: "code"
-                        value: "8462-4"
-                      - path: "display"
-                        value: "Diastolic blood pressure"
+                      - path: system
+                        value: http://loinc.org
+                      - path: code
+                        value: 8462-4
+                      - path: display
+                        value: Diastolic blood pressure
 
-        - name: "interpretation"
+        - name: interpretation
           with:
-            fhir: "interpretation"
-            openehr: "data[at0003]/items[at1059]"
+            fhir: interpretation
+            openehr: data[at0003]/items[at1059]
 
-        - name: "comment"
+        - name: comment
           with:
-            fhir: "note.text"
-            openehr: "data[at0003]/items[at0033]"
+            fhir: note.text
+            openehr: data[at0003]/items[at0033]
 
-  - name: "bodySite"
+  - name: bodySite
     with:
-      fhir: "$resource.bodySite"
-      openehr: "$archetype/protocol[at0011]/items[at0014]"
+      fhir: $resource.bodySite
+      openehr: $archetype/protocol[at0011]/items[at0014]
 
-  - name: "bodySiteCluster"
-    unidirectional: "openehr->fhir"   # avoid filling both nodes on the way back (recurrence pattern E)
+  - name: bodySiteCluster
+    unidirectional: openehr->fhir   # avoid filling both nodes on the way back (recurrence pattern E)
     with:
-      fhir: "$resource.bodySite"
-      openehr: "$archetype/protocol[at0011]/items[openEHR-EHR-CLUSTER.anatomical_location.v1]"
-    slotArchetype: "CLUSTER.anatomical_location.v1"
+      fhir: $resource.bodySite
+      openehr: $archetype/protocol[at0011]/items[openEHR-EHR-CLUSTER.anatomical_location.v1]
+    slotArchetype: CLUSTER.anatomical_location.v1
 
-  - name: "method"
+  - name: method
     with:
-      fhir: "$resource.method"
-      openehr: "$archetype/protocol[at0011]/items[at1035]"
+      fhir: $resource.method
+      openehr: $archetype/protocol[at0011]/items[at1035]
 ```
 
 (Method would normally get a `manual` table local at-codes ↔ SNOMED CT; omitted here for length.)
@@ -213,43 +213,43 @@ grammar: FHIRConnect/v1.0.0
 type: extension
 metadata:
   name: vitals_bp_profile
-  version: "0.0.1-alpha"
+  version: 0.0.1-alpha
 spec:
   system: FHIR
   version: R4
   extends: OBSERVATION.blood_pressure.v2
 
 mappings:
-  - name: "metaProfile"
-    extension: "add"
-    unidirectional: "openehr->fhir"
+  - name: metaProfile
+    extension: add
+    unidirectional: openehr->fhir
     with:
-      fhir: "$resource.meta"
+      fhir: $resource.meta
     manual:
-      - name: "profile"
+      - name: profile
         fhir:
-          - path: "profile"
-            value: "http://hl7.org/fhir/StructureDefinition/bp"
+          - path: profile
+            value: http://hl7.org/fhir/StructureDefinition/bp
 
-  - name: "categoryVitalSigns"
-    extension: "add"
-    unidirectional: "openehr->fhir"
+  - name: categoryVitalSigns
+    extension: add
+    unidirectional: openehr->fhir
     with:
-      fhir: "$resource.category.coding"
+      fhir: $resource.category.coding
     manual:
-      - name: "vitalSigns"
+      - name: vitalSigns
         fhir:
-          - path: "system"
-            value: "http://terminology.hl7.org/CodeSystem/observation-category"
-          - path: "code"
-            value: "vital-signs"
+          - path: system
+            value: http://terminology.hl7.org/CodeSystem/observation-category
+          - path: code
+            value: vital-signs
 
-  - name: "compositionMapping"
-    extension: "add"
+  - name: compositionMapping
+    extension: add
     with:
-      fhir: "$resource"
-      openehr: "$composition"
-    slotArchetype: "COMPOSITION.report.v1.Observation"   # existing library model for composer/context
+      fhir: $resource
+      openehr: $composition
+    slotArchetype: COMPOSITION.report.v1.Observation   # existing library model for composer/context
 ```
 
 ## Step 6: context `projects/<ns>/vitals/bp.context.yml`
@@ -259,24 +259,24 @@ grammar: FHIRConnect/v1.0.0
 type: context
 metadata:
   name: vitals_bp.context
-  version: "0.0.1-alpha"
+  version: 0.0.1-alpha
 spec:
   system: FHIR
   version: R4
 context:
   profile:
-    url: "http://hl7.org/fhir/StructureDefinition/bp"
-    version: "4.0.1"
+    url: http://hl7.org/fhir/StructureDefinition/bp
+    version: 4.0.1
   template:
-    id: "Vital signs"              # exact OPT template_id
-    sem_ver: "1.0.0"
+    id: Vital signs              # exact OPT template_id
+    sem_ver: 1.0.0
   archetypes:
-    - "OBSERVATION.blood_pressure.v2"
-    - "CLUSTER.anatomical_location.v1"
-    - "COMPOSITION.report.v1.Observation"
+    - OBSERVATION.blood_pressure.v2
+    - CLUSTER.anatomical_location.v1
+    - COMPOSITION.report.v1.Observation
   extensions:
-    - "vitals_bp_profile"
-  start: "OBSERVATION.blood_pressure.v2"
+    - vitals_bp_profile
+  start: OBSERVATION.blood_pressure.v2
 ```
 
 ## Step 7: validate and report

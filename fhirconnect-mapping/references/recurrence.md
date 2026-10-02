@@ -7,16 +7,16 @@ appends to a `0..n` path it is not iterating, and overwrites a `0..1` path.
 ## Pattern A: list ↔ list with children
 
 ```yaml
-  - name: "collection"
+  - name: collection
     with:
-      fhir: "$resource.collection"        # 0..n
-      openehr: "$archetype/data[at0001]"  # 0..n  <- same level
-      type: "NONE"
+      fhir: $resource.collection        # 0..n
+      openehr: $archetype/data[at0001]  # 0..n  <- same level
+      type: NONE
     followedBy:
       mappings:
-        - name: "collected"
+        - name: collected
           with: { fhir: "collected", openehr: "items[at0015]" }
-        - name: "collector"
+        - name: collector
           with: { fhir: "collector", openehr: "items[at0070]" }
 ```
 
@@ -26,22 +26,22 @@ value becomes a *new* `data[at0001]` entry (4 half-filled clusters instead of 2 
 ## Pattern B: list ↔ slot cluster (one cluster per FHIR item)
 
 ```yaml
-  - name: "specimen"
+  - name: specimen
     with:
-      fhir: "$resource.specimen"          # 0..n Reference
-      openehr: "$reference"
-      type: "NONE"
+      fhir: $resource.specimen          # 0..n Reference
+      openehr: $reference
+      type: NONE
     reference:
-      resourceType: "Specimen"
+      resourceType: Specimen
       mappings:
-        - name: "specimenRecurring"
+        - name: specimenRecurring
           with:
-            fhir: "$fhirRoot"
-            openehr: "$archetype/activities[at0001]/description[at0009]/items[openEHR-EHR-CLUSTER.specimen.v1]"  # 0..n
-          slotArchetype: "CLUSTER.specimen.v1"
+            fhir: $fhirRoot
+            openehr: $archetype/activities[at0001]/description[at0009]/items[openEHR-EHR-CLUSTER.specimen.v1]  # 0..n
+          slotArchetype: CLUSTER.specimen.v1
           followedBy:                      # extra fields of the same occurrence go here
             mappings:
-              - name: "specimenIdentifier"
+              - name: specimenIdentifier
                 with: { fhir: "identifier", openehr: "items[at0001]" }
 ```
 
@@ -51,13 +51,13 @@ Wrong: a sibling method next to the slot that writes `.../items[openEHR-EHR-CLUS
 ## Pattern C: double nesting (list of lists)
 
 ```yaml
-  - name: "category"
+  - name: category
     with:
-      fhir: "$resource.category"                           # 0..n
-      openehr: "$archetype/protocol[at0004]/items[at0094]" # 0..n
+      fhir: $resource.category                           # 0..n
+      openehr: $archetype/protocol[at0004]/items[at0094] # 0..n
     followedBy:
       mappings:
-        - name: "text"
+        - name: text
           with: { fhir: "text", openehr: "items[at0063]" } # 0..n inside each
 ```
 
@@ -70,21 +70,21 @@ Encounter.diagnosis has `use` on the diagnosis entry, but the Condition content 
 `condition.reference`. After slotting the referenced Condition, reach back up:
 
 ```yaml
-  - name: "problemDiagnosis"
+  - name: problemDiagnosis
     with: { fhir: "$resource.diagnosis", openehr: "$archetype", type: "NONE" }
     followedBy:
       mappings:
-        - name: "referencedDiagnose"
+        - name: referencedDiagnose
           with: { fhir: "condition.reference", openehr: "$reference" }
           reference:
-            resourceType: "Condition"
+            resourceType: Condition
             mappings:
-              - name: "slot"
+              - name: slot
                 with: { fhir: "$fhirRoot", openehr: "items[openEHR-EHR-EVALUATION.problem_diagnosis.v1]" }
-                slotArchetype: "EVALUATION.problem_diagnosis.v1"
+                slotArchetype: EVALUATION.problem_diagnosis.v1
                 followedBy:
                   mappings:
-                    - name: "diagnosisTyp"
+                    - name: diagnosisTyp
                       with: { fhir: "^^.use.coding", openehr: "data[at0001]/items[at0009]" }
 ```
 

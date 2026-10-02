@@ -23,13 +23,13 @@ grammar: FHIRConnect/v1.0.0          # grammar + version; library and openFHIR u
 type: model                          # model | extension | context
 metadata:
   name: EVALUATION.problem_diagnosis.v1   # unique id, used by slotArchetype / extends / context
-  version: "0.0.1-alpha"                  # version of this mapping file (quote it)
+  version: 0.0.1-alpha                    # version of this mapping file; quote only numeric-looking ones ("1.0")
 spec:
   system: FHIR
   version: R4                        # designed and tested for R4
   openEhrConfig:                     # model only
     archetype: openEHR-EHR-EVALUATION.problem_diagnosis.v1
-    revision: "1.4.1"                # archetype revision this mapping was written against
+    revision: 1.4.1                # archetype revision this mapping was written against
   fhirConfig:                        # model only, documentation
     structureDefinition: http://hl7.org/fhir/StructureDefinition/Condition
   # extends: EVALUATION.problem_diagnosis.v1      # extension only
@@ -48,10 +48,10 @@ Naming conventions for model mappings:
 
 ```yaml
 mappings:
-  - name: "dateTime"                 # camelCase; referenced by overwrite / appendTo
+  - name: dateTime                 # camelCase; referenced by overwrite / appendTo
     with:
-      fhir: "$resource.onset"       # FHIRPath, relative to the variable
-      openehr: "$archetype/data[at0001]/items[at0077]"   # openEHR path, archetype node ids only
+      fhir: $resource.onset       # FHIRPath, relative to the variable
+      openehr: $archetype/data[at0001]/items[at0077]   # openEHR path, archetype node ids only
     # type: "NONE"                  # inside `with` or at method level; only NONE is still meaningful
     # unidirectional: "openehr->fhir" | "fhir->openehr"
     # fhirCondition / openehrCondition / followedBy / slotArchetype / reference / manual /
@@ -91,17 +91,17 @@ in `CLUSTER.adverse_reaction_event.v1`, which is slotted from `$resource.reactio
 ## 5. followedBy and path construction
 
 ```yaml
-  - name: "period"
+  - name: period
     with:
-      fhir: "$resource.onset.ofType(Period)"
-      openehr: "$archetype"
-      type: "NONE"
+      fhir: $resource.onset.ofType(Period)
+      openehr: $archetype
+      type: NONE
     followedBy:
       mappings:
-        - name: "start"
+        - name: start
           with:
-            fhir: "start"                      # -> $resource.onset.ofType(Period).start
-            openehr: "data[at0001]/items[at0077]"   # -> $archetype/data[at0001]/items[at0077]
+            fhir: start                      # -> $resource.onset.ofType(Period).start
+            openehr: data[at0001]/items[at0077]   # -> $archetype/data[at0001]/items[at0077]
 ```
 
 - Child paths are **appended** to the parent's paths unless they start with a variable.
@@ -118,15 +118,15 @@ in `CLUSTER.adverse_reaction_event.v1`, which is slotted from `$resource.reactio
 
 ```yaml
     fhirCondition:                 # evaluated on FHIR input (fhir->openehr only)
-      targetRoot: "$resource.identifier"     # the element set that is filtered and must match `with`
-      targetAttribute: "type.coding.code"    # or targetAttributes: [..] (OR between them)
-      operator: "one of"                     # one of | not of | empty | not empty | type
-      criteria: "room"                       # or criterias: [..]
+      targetRoot: $resource.identifier     # the element set that is filtered and must match `with`
+      targetAttribute: type.coding.code    # or targetAttributes: [..] (OR between them)
+      operator: one of                     # one of | not of | empty | not empty | type
+      criteria: room                       # or criterias: [..]
     openehrCondition:              # evaluated on openEHR input (openehr->fhir only)
-      targetRoot: "$archetype"
-      targetAttribute: "items[at0001]"
-      operator: "type"
-      criteria: "DV_CODED_TEXT"
+      targetRoot: $archetype
+      targetAttribute: items[at0001]
+      operator: type
+      criteria: DV_CODED_TEXT
 ```
 
 - Conditions filter the **input** side only. A `fhirCondition` has no effect when mapping openEHR → FHIR.
@@ -158,15 +158,15 @@ in `CLUSTER.adverse_reaction_event.v1`, which is slotted from `$resource.reactio
 preprocessor:
   hierarchy:
     with:
-      fhir: "$resource.dosage"
-      openehr: "$archetype/data[at0001]/events[at0002]"
+      fhir: $resource.dosage
+      openehr: $archetype/data[at0001]/events[at0002]
     split:
       fhir:
-        create: "resource"           # one FHIR resource per openEHR occurrence of with.openehr
+        create: resource           # one FHIR resource per openEHR occurrence of with.openehr
         unique: ["data[at0003]/items[openEHR-EHR-CLUSTER.medication.v2]/items[at0132]"]
       openehr:
-        create: "event"              # one EVENT per distinct (route, timing.event) in the FHIR dosages
-        path: "$archetype/data[at0001]/events[at0002]"
+        create: event              # one EVENT per distinct (route, timing.event) in the FHIR dosages
+        path: $archetype/data[at0001]/events[at0002]
         unique: ["route", "timing.event"]
 ```
 
@@ -176,19 +176,19 @@ creates one resource per EVENT of an OBSERVATION. Only one hierarchy per file.
 ## 8. Extension methods (type: extension)
 
 ```yaml
-  - name: "problemQualifier"
-    extension: "add"                 # append a new method at the end of the model's mappings
+  - name: problemQualifier
+    extension: add                 # append a new method at the end of the model's mappings
     with: {...}
-    slotArchetype: "CLUSTER.problem_qualifier.v2"
+    slotArchetype: CLUSTER.problem_qualifier.v2
 
-  - name: "icd10"
-    extension: "append"              # attach followedBy children to an existing method
-    appendTo: "problemDiagnose"      # dotted path for nested targets: parent.child
+  - name: icd10
+    extension: append              # attach followedBy children to an existing method
+    appendTo: problemDiagnose      # dotted path for nested targets: parent.child
     followedBy:
       mappings: [...]
 
-  - name: "dateTime"
-    extension: "overwrite"           # replace the model method with this name completely
+  - name: dateTime
+    extension: overwrite           # replace the model method with this name completely
     with: {...}
 ```
 
@@ -203,28 +203,28 @@ grammar: FHIRConnect/v1.0.0
 type: context
 metadata:
   name: KDS_Prozedur.context
-  version: "1.0.0"
+  version: 1.0.0
 spec:
   system: FHIR
   version: R4
 context:
   profile:
-    url: "https://www.medizininformatik-initiative.de/fhir/core/modul-prozedur/StructureDefinition/Procedure"
-    version: "2025.0.0"
+    url: https://www.medizininformatik-initiative.de/fhir/core/modul-prozedur/StructureDefinition/Procedure
+    version: 2025.0.0
   template:
-    id: "KDS_Prozedur"               # exact OPT template_id
-    sem_ver: "10.0.0"
+    id: KDS_Prozedur               # exact OPT template_id
+    sem_ver: 10.0.0
   archetypes:                        # model mapping names used (incl. COMPOSITION / SECTION / CLUSTER models)
-    - "ACTION.procedure.v1"
-    - "CLUSTER.anatomical_location.v1"
-    - "CLUSTER.case_identification.v0"
-    - "COMPOSITION.report.v1.Procedure"
+    - ACTION.procedure.v1
+    - CLUSTER.anatomical_location.v1
+    - CLUSTER.case_identification.v0
+    - COMPOSITION.report.v1.Procedure
   extensions:                        # extension mapping names; applied whenever their model runs
-    - "KDS_procedure.v1"
-    - "KDS_anatomical_location_prozedur"
-    - "KDS_composition"
+    - KDS_procedure.v1
+    - KDS_anatomical_location_prozedur
+    - KDS_composition
   # operational: ["provenance"]      # operational models to trigger
-  start: "ACTION.procedure.v1"       # the ENTRY (or COMPOSITION) model the engine starts from
+  start: ACTION.procedure.v1       # the ENTRY (or COMPOSITION) model the engine starts from
 ```
 
 The engine selects a context by the resource's `meta.profile` (FHIR → openEHR) or by the template id
