@@ -318,15 +318,12 @@ def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=N
         c = cond_text(m)
         if c:
             notes.append(c)
-        # where this method lives: [name#method](file#method) is clickable on GitHub, in the IDEA
-        # preview and (to the method) in the IDEA editor with the plugin; see references/markdown-links.md
-        owner = origin or model_name
-        if owner and m.get("name") and linker:
-            link = linker(owner, m.get("name"))
-            if link:
-                notes.append(link)
-        elif origin:
+        if origin:
             notes.append("*%s*" % origin)
+        # both path cells link to the method that produces the row: file#method is clickable on GitHub,
+        # in the IDEA preview and (to the method) in the IDEA editor with the plugin; see references/markdown-links.md
+        owner = origin or model_name
+        target = linker(owner, m.get("name")) if (owner and m.get("name") and linker) else None
         how = None
         oe_cell = oe_human(o, model_arch, opt)
         if m.get("slotArchetype"):
@@ -361,7 +358,7 @@ def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=N
             if not is_group and (rel or is_comp or (o and o.startswith("$reference"))):
                 how = "direct"
         if how:
-            rows.append((fhir_human(f), oe_cell, how, "; ".join(n for n in notes if n)))
+            rows.append((fhir_human(f), oe_cell, how, "; ".join(n for n in notes if n), target))
         for key in ("followedBy", "reference"):
             sub = m.get(key)
             if isinstance(sub, dict):
@@ -474,16 +471,16 @@ def build_readme(ctx_path, lib):
 
         def linker(owner, method, _a=a):
             r_ = lib.resolve(owner, ctx_dir)
-            if not r_:
-                return "*%s*" % owner
-            return "[`%s#%s`](%s#%s)" % (owner, method, rel(r_[0]), method)
+            return ("%s#%s" % (rel(r_[0]), method)) if r_ else None
 
         walk(methods, rtype if a == start else None, arch, opt, rows, linker=linker, model_name=a)
         rows = dedupe(rows)
         out.append("| FHIR | openEHR | how | notes |")
         out.append("|---|---|---|---|")
-        for f, o, how, notes in rows:
-            out.append("| `%s` | %s | %s | %s |" % (esc(f), o, how, notes))
+        for f, o, how, notes, target in rows:
+            fcell = ("[`%s`](%s)" % (esc(f), target)) if (target and f) else ("`%s`" % esc(f))
+            ocell = ("[%s](%s)" % (o, target)) if (target and o) else o
+            out.append("| %s | %s | %s | %s |" % (fcell, ocell, how, notes))
         out.append("")
     out.append("---")
     out.append("*Generated from the mapping YAML with `fhirconnect-mapping/scripts/mapping_readme.py`. Regenerate after changing a mapping.*")

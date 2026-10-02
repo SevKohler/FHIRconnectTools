@@ -13,6 +13,9 @@ GitHub's file view, IntelliJ's Markdown preview, and the IntelliJ editor with th
 | a name in prose | `` `EVALUATION.problem_diagnosis.v1` `` (metadata.name) or the full archetype id | plain text | plain text | Ctrl+click jumps to the mapping |
 | a method in prose | `` `KDS_problem_diagnose#dateTime` `` | plain text | plain text | Ctrl+click jumps to the method |
 
+In generated mapping READMEs both path cells of a row (`FHIR` and `openEHR`) are links to the
+method that produces the row, so a reader can click either side and land on the YAML.
+
 Rules:
 
 - Link **targets are relative paths** from the Markdown file, forward slashes, exactly as the file is
