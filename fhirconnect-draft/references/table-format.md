@@ -62,6 +62,17 @@ From the ConceptMap equivalence code system, as used in the HL7 tables:
 
 Keep `unmatched` and `Not mapped` apart: the first is a modelling gap, the second a decision.
 
+## Linking to mappings
+
+When a FHIRconnect mapping already exists for a row (Refine and Diff modes, or a table written next
+to the YAML), the Comment column names the method as a link in the shared form, so the table is
+clickable on GitHub, in the IDEA preview and in the IDEA editor:
+
+`[`EVALUATION.problem_diagnosis.v1#dateTime`](../../model/evaluation/org.openehr/problem_diagnosis.v1.yml#dateTime)`
+
+Relative path from the table file, method name as URL anchor (dotted for nested methods). Full rules
+in `fhirconnect-mapping/references/markdown-links.md`. A row without a mapping yet gets no link.
+
 ## Comment conventions seen in the source tables
 
 - Value set replaced in the template to match FHIR (`at0120` category → Food/Medication/Environment/Biologic).

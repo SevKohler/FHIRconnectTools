@@ -1,0 +1,8 @@
+<idea-plugin>
+    <!-- loaded only when the Markdown plugin is present: preview clicks on mapping links land on the method -->
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceInterface="org.intellij.plugins.markdown.ui.preview.accessor.MarkdownLinkOpener"
+                            serviceImplementation="org.fhirconnect.idea.markdown.FhirConnectLinkOpener"
+                            overrides="true"/>
+    </extensions>
+</idea-plugin>

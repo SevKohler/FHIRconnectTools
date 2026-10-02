@@ -25,6 +25,7 @@ dependencies {
             intellijIdeaCommunity("2024.3")
         }
         bundledPlugin("org.jetbrains.plugins.yaml")
+        bundledPlugin("org.intellij.plugins.markdown")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
     testImplementation("junit:junit:4.13.2")

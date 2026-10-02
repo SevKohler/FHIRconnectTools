@@ -5,6 +5,7 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
+    <depends optional="true" config-file="fhirconnect-markdown.xml">org.intellij.plugins.markdown</depends>
 
     <resource-bundle>messages.FhirConnectBundle</resource-bundle>
 

@@ -32,7 +32,8 @@ Skill files: `scripts/` (harness CLI + the two oracles it imports, Python 3.7+, 
 `references/protocol.md` (iteration loop, guardrails, report format), `references/oracles.md`
 (what each oracle catches, how to read its output), `references/errors.md` (openFHIR error
 patterns and their usual cause), `assets/` (compose file, config and expectations skeletons).
-Read `references/protocol.md` once per session before iterating.
+Read `references/protocol.md` once per session before iterating. Mapping references in the report
+follow `fhirconnect-mapping/references/markdown-links.md` (`[name#method](relative/path.yml#method)`).
 
 ## Preconditions
 

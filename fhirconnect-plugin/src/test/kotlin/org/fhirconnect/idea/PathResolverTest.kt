@@ -533,7 +533,7 @@ mappings:
 
     fun testGotoFromMarkdown() {
         val md = myFixture.addFileToProject("kds/diagnose/notes.md",
-            "Model `EVALUATION.problem_diagnosis.v1`, ext [`KDS_problem_diagnose#dateTime`](KDS_problem_diagnose.yml), " +
+            "Model `EVALUATION.problem_diagnosis.v1`, ext [`KDS_problem_diagnose#dateTime`](KDS_problem_diagnose.yml#dateTime), " +
             "cell [`Condition.code`](../model/problem_diagnosis.v1.yml \"EVALUATION.problem_diagnosis.v1#problemDiagnose\"), " +
             "file KDS_problem_qualifier.yml, archetype openEHR-EHR-CLUSTER.anatomical_location.v1, nested `EVALUATION.problem_diagnosis.v1#participations.performer`.")
         myFixture.configureFromExistingVirtualFile(md.virtualFile)
@@ -546,7 +546,7 @@ mappings:
         }
         assertEquals("problem_diagnosis.v1.yml", target("EVALUATION.problem_diagnosis.v1`")?.containingFile?.name)
         // markdown link with a method anchor -> the method's name value in the target file
-        val link = target("KDS_problem_diagnose.yml)", 3)
+        val link = target("KDS_problem_diagnose.yml#dateTime", 3)
         assertEquals("KDS_problem_diagnose.yml", link?.containingFile?.name)
         assertEquals("dateTime", (link as? YAMLScalar)?.textValue)
         val cell = target("../model/problem_diagnosis.v1.yml \"EVALUATION", 5)
@@ -558,6 +558,18 @@ mappings:
         val nested = target("EVALUATION.problem_diagnosis.v1#participations.performer", 40)
         assertEquals("performer", (nested as? YAMLScalar)?.textValue)
         assertNull(target("Model", 1))
+    }
+
+    fun testPreviewLinkOpenerLandsOnMethod() {
+        val vf = myFixture.findFileInTempDir("kds/diagnose/KDS_problem_diagnose.yml")
+        val opener = org.fhirconnect.idea.markdown.FhirConnectLinkOpener()
+        opener.openLink(project, vf.url + "#dateTime")
+        com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        val fem = com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project)
+        assertEquals("KDS_problem_diagnose.yml", fem.selectedFiles.firstOrNull()?.name)
+        val editor = fem.selectedTextEditor!!
+        val lineText = editor.document.let { d -> val l = d.getLineNumber(editor.caretModel.offset); d.getText(com.intellij.openapi.util.TextRange(d.getLineStartOffset(l), d.getLineEndOffset(l))) }
+        assertTrue(lineText, lineText.contains("name: \"dateTime\"") || lineText.contains("name: dateTime"))
     }
 
     fun testGhostText() {
