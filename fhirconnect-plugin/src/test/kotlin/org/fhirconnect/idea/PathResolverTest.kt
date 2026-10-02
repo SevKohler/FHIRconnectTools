@@ -303,11 +303,12 @@ mappings:
         assertTrue(items.toString(), items.contains("\$resource.code"))
         assertFalse(items.toString(), items.contains("\$fhirRoot.coding"))
         assertFalse(items.toString(), items.contains("\$resource.coding"))
-        // accepting an item quotes the unquoted value
+        // accepting an item inserts the plain value, no quotes
         val coding = myFixture.lookupElements!!.first { it.lookupString == "coding" }
         myFixture.lookup.currentItem = coding
         myFixture.finishLookup('\n')
-        assertTrue(myFixture.editor.document.text, myFixture.editor.document.text.contains("fhir: \"coding\""))
+        assertTrue(myFixture.editor.document.text, myFixture.editor.document.text.contains("fhir: coding"))
+        assertFalse(myFixture.editor.document.text, myFixture.editor.document.text.contains("fhir: \"coding\""))
     }
 
     fun testKeywordCompletion() {
@@ -357,7 +358,7 @@ mappings:
         myFixture.lookup.currentItem = items!!.first { it.lookupString == "name" }
         myFixture.finishLookup('\n')
         val text = myFixture.editor.document.text
-        assertTrue(text, text.contains("  - name: \"\"\n    extension: \"add\"\n    with:\n      fhir: \"\"\n      openehr: \"\""))
+        assertTrue(text, text.contains("  - name: \n    extension: add\n    with:\n      fhir: \n      openehr: "))
     }
 
     fun testUnknownKeyInspectionAndNoFalsePositivesOnFixtures() {
@@ -413,15 +414,56 @@ mappings:
 
         val ctx = mgr.getInternalTemplate(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.TEMPLATE_CONTEXT)
         val ct = ctx.getText(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.properties(project, snap, ctx.name, "KDS_new.context", dir))
-        assertTrue(ct, ct.contains("id: \"KDS_Diagnose\""))
-        assertTrue(ct, ct.contains("- \"EVALUATION.problem_diagnosis.v1\""))
-        assertTrue(ct, ct.contains("- \"KDS_problem_diagnose\""))
-        assertTrue(ct, ct.contains("start: \"EVALUATION.problem_diagnosis.v1\""))
-        assertTrue(ct, ct.contains("url: \"https://www.medizininformatik-initiative.de/fhir/core/modul-diagnose/StructureDefinition/Diagnose\""))
+        assertTrue(ct, ct.contains("id: KDS_Diagnose"))
+        assertTrue(ct, ct.contains("- EVALUATION.problem_diagnosis.v1"))
+        assertTrue(ct, ct.contains("- KDS_problem_diagnose"))
+        assertTrue(ct, ct.contains("start: EVALUATION.problem_diagnosis.v1"))
+        assertTrue(ct, ct.contains("url: https://www.medizininformatik-initiative.de/fhir/core/modul-diagnose/StructureDefinition/Diagnose"))
+        assertFalse(ct, ct.contains("\""))
 
         val ext = mgr.getInternalTemplate(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.TEMPLATE_EXTENSION)
         val et = ext.getText(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.properties(project, snap, ext.name, "KDS_new_ext", dir))
-        assertTrue(et, et.contains("extends: EVALUATION.problem_diagnosis.v1") && et.contains("extension: \"add\"") && et.contains("\$resource.meta"))
+        assertTrue(et, et.contains("extends: EVALUATION.problem_diagnosis.v1") && et.contains("extension: add") && et.contains("\$resource.meta"))
+    }
+
+    fun testRetypedLiteralInspection() {
+        myFixture.enableInspections(FhirConnectPathInspection::class.java)
+        myFixture.addFileToProject("kds/model/retyped.yml", """
+grammar: FHIRConnect/v1.0.0
+type: model
+metadata:
+  name: EVALUATION.retyped.v1
+  version: 1.0
+spec:
+  system: FHIR
+  version: R4
+  openEhrConfig:
+    archetype: openEHR-EHR-EVALUATION.problem_diagnosis.v1
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/Condition
+mappings:
+  - name: status
+    with:
+      fhir: ${'$'}resource
+      openehr: ${'$'}archetype/data[at0001]/items[at0073]
+    manual:
+      - name: unknown
+        openehr:
+          - path: null_flavour/defining_code/code_string
+            value: 253
+        fhirCondition:
+          targetRoot: ${'$'}fhirRoot
+          targetAttribute: active
+          operator: one of
+          criteria: false
+""".trimIndent())
+        FhirConnectIndex.getInstance(project).invalidate()
+        myFixture.configureFromTempProjectFile("kds/model/retyped.yml")
+        val w = myFixture.doHighlighting().filter { it.description?.contains("is read as") == true }.map { it.description!! }
+        assertTrue(w.toString(), w.any { it.contains("'253'") && it.contains("a number") })
+        assertTrue(w.toString(), w.any { it.contains("'false'") && it.contains("a boolean") })
+        assertTrue(w.toString(), w.any { it.contains("'1.0'") })
+        assertEquals(w.toString(), 3, w.size)
     }
 
     fun testGhostText() {

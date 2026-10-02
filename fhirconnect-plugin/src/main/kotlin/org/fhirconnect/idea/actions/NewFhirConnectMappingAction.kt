@@ -82,8 +82,8 @@ class NewFhirConnectMappingAction : CreateFileFromTemplateAction(
                 ?: models.firstOrNull() ?: "TYPE.concept.v1"
             props["EXTENDS"] = entryModel
             props["START"] = entryModel
-            props["ARCHETYPES"] = (if (models.isEmpty()) listOf("TYPE.concept.v1") else models).joinToString("\n") { "    - \"$it\"" }
-            props["EXTENSIONS"] = (if (extensions.isEmpty()) listOf("PROJECT_extension") else extensions.map { it.name }).joinToString("\n") { "    - \"$it\"" }
+            props["ARCHETYPES"] = (if (models.isEmpty()) listOf("TYPE.concept.v1") else models).joinToString("\n") { "    - $it" }
+            props["EXTENSIONS"] = (if (extensions.isEmpty()) listOf("PROJECT_extension") else extensions.map { it.name }).joinToString("\n") { "    - $it" }
             return props
         }
     }

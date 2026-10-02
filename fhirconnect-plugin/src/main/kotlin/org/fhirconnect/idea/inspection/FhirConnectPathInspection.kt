@@ -29,9 +29,27 @@ class FhirConnectPathInspection : LocalInspectionTool() {
                 if (element is YAMLKeyValue) {
                     check(element, ctx, holder)
                     checkKey(element, fileType, holder)
+                    checkRetypedLiteral(element, holder)
                 }
             }
         }
+    }
+
+    private val RETYPED = Regex("^(?:[-+]?(?:0|[1-9][0-9_]*)|[-+]?0x[0-9a-fA-F_]+|[-+]?0o?[0-7_]+|[-+]?(?:[0-9][0-9_]*)?\\.[0-9_]*(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN)|true|True|TRUE|false|False|FALSE|yes|Yes|YES|no|No|NO|on|On|ON|off|Off|OFF|y|Y|n|N|null|Null|NULL|~|[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[Tt ].*)?)$")
+
+    /** an unquoted scalar that YAML parsers read as number / boolean / null / date instead of the string the engine expects */
+    private fun checkRetypedLiteral(kv: YAMLKeyValue, holder: ProblemsHolder) {
+        val scalar = kv.value as? YAMLScalar ?: return
+        if (scalar !is org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl) return
+        val text = scalar.textValue.trim()
+        if (text.isEmpty() || !RETYPED.matches(text)) return
+        val what = when {
+            text.matches(Regex("(?i)true|false|yes|no|on|off|y|n")) -> "a boolean"
+            text.matches(Regex("(?i)null|~")) -> "null"
+            text.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}.*")) -> "a date"
+            else -> "a number"
+        }
+        holder.registerProblem(scalar, "FHIRconnect: '$text' is read as $what by YAML parsers, not as the string '$text'; quote it or the engine may see the wrong value", ProblemHighlightType.WARNING)
     }
 
     /** grammar layer: keys that do not belong in their block, extension methods in the wrong place */

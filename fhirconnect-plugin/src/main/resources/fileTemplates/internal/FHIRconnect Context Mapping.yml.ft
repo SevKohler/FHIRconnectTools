@@ -2,20 +2,20 @@ grammar: FHIRConnect/v1.0.0
 type: context
 metadata:
   name: ${MAPPING_NAME}
-  version: "0.0.1"
+  version: 0.0.1
 spec:
   system: FHIR
   version: R4
 
 context:
   profile:
-    url: "${PROFILE_URL}"
-    version: "1.0.0"
+    url: ${PROFILE_URL}
+    version: 1.0.0
   template:
-    id: "${TEMPLATE_ID}"
-    sem_ver: "1.0.0"
+    id: ${TEMPLATE_ID}
+    sem_ver: 1.0.0
   archetypes:
 ${ARCHETYPES}
   extensions:
 ${EXTENSIONS}
-  start: "${START}"
+  start: ${START}

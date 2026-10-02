@@ -69,7 +69,9 @@ Resolution follows the specification: `followedBy` children extend the parent's 
   the offered paths are relative to the parent method, as the grammar requires. The popup opens by
   itself while typing in these values, and the longest common continuation of the matching paths is
   shown as grey inline text that Tab accepts (needs *Settings → Editor → General → Inline Completion*
-  enabled, which is the default).
+  enabled, which is the default). Nothing the plugin inserts is quoted: paths and keywords are plain
+  YAML scalars. An inspection flags the few literals YAML would retype when unquoted (`criteria: 253`,
+  `criteria: false`, `version: 1.0`), which are the only places quotes are needed.
 
 ## Project layout the plugin expects
 

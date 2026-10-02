@@ -112,7 +112,7 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
             else -> emptyList()
         }
         return values.map { (v, doc) ->
-            PrioritizedLookupElement.withPriority(LookupElementBuilder.create(v).withTypeText(doc, true).withInsertHandler(QuoteValueInsertHandler), 20.0)
+            PrioritizedLookupElement.withPriority(LookupElementBuilder.create(v).withTypeText(doc, true), 20.0)
         }
     }
 
@@ -126,16 +126,16 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
                 val top = ((owner.parent as? YAMLSequenceItem)?.parent as? YAMLSequence)?.parent?.let { isTopLevelMethodSequence(it as YAMLKeyValue) } ?: false
                 add(simpleKey("name"), "name")
                 if (fileType == "extension" && top) add(simpleKey("extension", "add | append | overwrite"), "extension")
-                add(block("with", "with:\n  fhir: \"\$FHIR\$\"\n  openehr: \"\$OPENEHR\$\"", listOf("FHIR", "OPENEHR"), "fhir / openehr paths"), "with")
-                add(block("followedBy", "followedBy:\n  mappings:\n    - name: \"\$NAME\$\"\n      with:\n        fhir: \"\$FHIR\$\"\n        openehr: \"\$OPENEHR\$\"", listOf("NAME", "FHIR", "OPENEHR"), "child methods"), "followedBy")
+                add(block("with", "with:\n  fhir: \$FHIR\$\n  openehr: \$OPENEHR\$", listOf("FHIR", "OPENEHR"), "fhir / openehr paths"), "with")
+                add(block("followedBy", "followedBy:\n  mappings:\n    - name: \$NAME\$\n      with:\n        fhir: \$FHIR\$\n        openehr: \$OPENEHR\$", listOf("NAME", "FHIR", "OPENEHR"), "child methods"), "followedBy")
                 add(simpleKey("slotArchetype", "delegate to a model mapping"), "slotArchetype")
-                add(block("reference", "reference:\n  resourceType: \"\$TYPE\$\"\n  mappings:\n    - name: \"\$NAME\$\"\n      with:\n        fhir: \"\$fhirRoot\"\n        openehr: \"\$OPENEHR\$\"", listOf("TYPE", "NAME", "OPENEHR"), "referenced resource"), "reference")
-                add(block("manual", "manual:\n  - name: \"\$NAME\$\"\n    fhir:\n      - path: \"\$PATH\$\"\n        value: \"\$VALUE\$\"", listOf("NAME", "PATH", "VALUE"), "static values"), "manual")
-                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \"\$ROOT\$\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"one of\"\n  criteria: \"\$CRIT\$\"", listOf("ROOT", "ATTR", "CRIT"), "filter on FHIR input"), "fhirCondition")
-                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \"\$ROOT\$\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"one of\"\n  criteria: \"\$CRIT\$\"", listOf("ROOT", "ATTR", "CRIT"), "filter on openEHR input"), "openehrCondition")
+                add(block("reference", "reference:\n  resourceType: \$TYPE\$\n  mappings:\n    - name: \$NAME\$\n      with:\n        fhir: \$fhirRoot\n        openehr: \$OPENEHR\$", listOf("TYPE", "NAME", "OPENEHR"), "referenced resource"), "reference")
+                add(block("manual", "manual:\n  - name: \$NAME\$\n    fhir:\n      - path: \$PATH\$\n        value: \$VALUE\$", listOf("NAME", "PATH", "VALUE"), "static values"), "manual")
+                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \$ROOT\$\n  targetAttribute: \$ATTR\$\n  operator: one of\n  criteria: \$CRIT\$", listOf("ROOT", "ATTR", "CRIT"), "filter on FHIR input"), "fhirCondition")
+                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \$ROOT\$\n  targetAttribute: \$ATTR\$\n  operator: one of\n  criteria: \$CRIT\$", listOf("ROOT", "ATTR", "CRIT"), "filter on openEHR input"), "openehrCondition")
                 add(simpleKey("unidirectional", "openehr->fhir | fhir->openehr"), "unidirectional")
                 add(simpleKey("appendTo", "method in the model to append to"), "appendTo")
-                add(block("link", "link:\n  meaning: \"\$MEANING\$\"\n  type: \"\$TYPE\$\"", listOf("MEANING", "TYPE"), "LINK to another composition"), "link")
+                add(block("link", "link:\n  meaning: \$MEANING\$\n  type: \$TYPE\$", listOf("MEANING", "TYPE"), "LINK to another composition"), "link")
                 add(simpleKey("mappingCode", "programmed mapping id"), "mappingCode")
                 add(simpleKey("conceptmap", "ConceptMap url"), "conceptmap")
                 add(simpleKey("participationsFunction"), "participationsFunction")
@@ -143,25 +143,25 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
             }
             "with" -> { add(simpleKey("fhir"), "fhir"); add(simpleKey("openehr"), "openehr"); add(simpleKey("type", "NONE"), "type") }
             "pathValue" -> { add(simpleKey("path"), "path"); add(simpleKey("value"), "value") }
-            "splitSide" -> { add(simpleKey("create", "resource | archetype | event"), "create"); add(simpleKey("path"), "path"); add(block("unique", "unique:\n  - \"\$U\$\"", listOf("U")), "unique") }
+            "splitSide" -> { add(simpleKey("create", "resource | archetype | event"), "create"); add(simpleKey("path"), "path"); add(block("unique", "unique:\n  - \$U\$", listOf("U")), "unique") }
             "condition" -> for (k in listOf("targetRoot", "targetAttribute", "targetAttributes", "operator", "criteria", "criterias")) add(simpleKey(k), k)
-            "followedBy" -> add(block("mappings", "mappings:\n  - name: \"\$NAME\$\"\n    with:\n      fhir: \"\$FHIR\$\"\n      openehr: \"\$OPENEHR\$\"", listOf("NAME", "FHIR", "OPENEHR")), "mappings")
-            "reference" -> { add(simpleKey("resourceType"), "resourceType"); add(block("mappings", "mappings:\n  - name: \"\$NAME\$\"\n    with:\n      fhir: \"\$fhirRoot\"\n      openehr: \"\$OPENEHR\$\"", listOf("NAME", "OPENEHR")), "mappings") }
+            "followedBy" -> add(block("mappings", "mappings:\n  - name: \$NAME\$\n    with:\n      fhir: \$FHIR\$\n      openehr: \$OPENEHR\$", listOf("NAME", "FHIR", "OPENEHR")), "mappings")
+            "reference" -> { add(simpleKey("resourceType"), "resourceType"); add(block("mappings", "mappings:\n  - name: \$NAME\$\n    with:\n      fhir: \$fhirRoot\n      openehr: \$OPENEHR\$", listOf("NAME", "OPENEHR")), "mappings") }
             "manualEntry" -> {
                 add(simpleKey("name"), "name")
-                add(block("fhir", "fhir:\n  - path: \"\$PATH\$\"\n    value: \"\$VALUE\$\"", listOf("PATH", "VALUE")), "fhir")
-                add(block("openehr", "openehr:\n  - path: \"\$PATH\$\"\n    value: \"\$VALUE\$\"", listOf("PATH", "VALUE")), "openehr")
-                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \"\$fhirRoot\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"one of\"\n  criteria: \"\$CRIT\$\"", listOf("ATTR", "CRIT")), "fhirCondition")
-                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \"\$openehrRoot\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"one of\"\n  criteria: \"\$CRIT\$\"", listOf("ATTR", "CRIT")), "openehrCondition")
+                add(block("fhir", "fhir:\n  - path: \$PATH\$\n    value: \$VALUE\$", listOf("PATH", "VALUE")), "fhir")
+                add(block("openehr", "openehr:\n  - path: \$PATH\$\n    value: \$VALUE\$", listOf("PATH", "VALUE")), "openehr")
+                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \$fhirRoot\n  targetAttribute: \$ATTR\$\n  operator: one of\n  criteria: \$CRIT\$", listOf("ATTR", "CRIT")), "fhirCondition")
+                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \$openehrRoot\n  targetAttribute: \$ATTR\$\n  operator: one of\n  criteria: \$CRIT\$", listOf("ATTR", "CRIT")), "openehrCondition")
                 add(simpleKey("unidirectional"), "unidirectional")
             }
             "link" -> { add(simpleKey("meaning"), "meaning"); add(simpleKey("type"), "type") }
             "top" -> {
                 for (k in listOf("grammar", "type", "metadata", "spec")) add(simpleKey(k), k)
-                if (fileType == "context") add(block("context", "context:\n  profile:\n    url: \"\$URL\$\"\n    version: \"\$PV\$\"\n  template:\n    id: \"\$TID\$\"\n    sem_ver: \"\$TV\$\"\n  archetypes:\n    - \"\$MODEL\$\"\n  extensions:\n    - \"\$EXT\$\"\n  start: \"\$MODEL\$\"", listOf("URL", "PV", "TID", "TV", "MODEL", "EXT")), "context")
+                if (fileType == "context") add(block("context", "context:\n  profile:\n    url: \$URL\$\n    version: \$PV\$\n  template:\n    id: \$TID\$\n    sem_ver: \$TV\$\n  archetypes:\n    - \$MODEL\$\n  extensions:\n    - \$EXT\$\n  start: \$MODEL\$", listOf("URL", "PV", "TID", "TV", "MODEL", "EXT")), "context")
                 else {
-                    add(block("preprocessor", "preprocessor:\n  fhirCondition:\n    targetRoot: \"\$resource\"\n    targetAttribute: \"\$ATTR\$\"\n    operator: \"not of\"\n    criteria: \"\$CRIT\$\"", listOf("ATTR", "CRIT")), "preprocessor")
-                    add(block("mappings", "mappings:\n  - name: \"\$NAME\$\"\n" + (if (fileType == "extension") "    extension: \"add\"\n" else "") + "    with:\n      fhir: \"\$FHIR\$\"\n      openehr: \"\$OPENEHR\$\"", listOf("NAME", "FHIR", "OPENEHR")), "mappings")
+                    add(block("preprocessor", "preprocessor:\n  fhirCondition:\n    targetRoot: \$resource\n    targetAttribute: \$ATTR\$\n    operator: not of\n    criteria: \$CRIT\$", listOf("ATTR", "CRIT")), "preprocessor")
+                    add(block("mappings", "mappings:\n  - name: \$NAME\$\n" + (if (fileType == "extension") "    extension: add\n" else "") + "    with:\n      fhir: \$FHIR\$\n      openehr: \$OPENEHR\$", listOf("NAME", "FHIR", "OPENEHR")), "mappings")
                 }
             }
             "metadata" -> { add(simpleKey("name"), "name"); add(simpleKey("version"), "version") }
@@ -170,7 +170,7 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
                 when (fileType) {
                     "extension" -> add(simpleKey("extends", "model mapping name"), "extends")
                     "model" -> {
-                        add(block("openEhrConfig", "openEhrConfig:\n  archetype: \"\$ARCH\$\"\n  revision: \"\$REV\$\"", listOf("ARCH", "REV")), "openEhrConfig")
+                        add(block("openEhrConfig", "openEhrConfig:\n  archetype: \$ARCH\$\n  revision: \$REV\$", listOf("ARCH", "REV")), "openEhrConfig")
                         add(block("fhirConfig", "fhirConfig:\n  structureDefinition: http://hl7.org/fhir/StructureDefinition/\$RES\$", listOf("RES")), "fhirConfig")
                         add(simpleKey("conceptmap"), "conceptmap")
                     }
@@ -179,21 +179,21 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
             "openEhrConfig" -> { add(simpleKey("archetype"), "archetype"); add(simpleKey("revision"), "revision") }
             "fhirConfig" -> add(simpleKey("structureDefinition"), "structureDefinition")
             "context" -> {
-                add(block("profile", "profile:\n  url: \"\$URL\$\"\n  version: \"\$V\$\"", listOf("URL", "V")), "profile")
-                add(block("template", "template:\n  id: \"\$ID\$\"\n  sem_ver: \"\$V\$\"", listOf("ID", "V")), "template")
-                for (k in listOf("archetypes", "extensions", "operational", "contexts")) add(block(k, "$k:\n  - \"\$NAME\$\"", listOf("NAME")), k)
+                add(block("profile", "profile:\n  url: \$URL\$\n  version: \$V\$", listOf("URL", "V")), "profile")
+                add(block("template", "template:\n  id: \$ID\$\n  sem_ver: \$V\$", listOf("ID", "V")), "template")
+                for (k in listOf("archetypes", "extensions", "operational", "contexts")) add(block(k, "$k:\n  - \$NAME\$", listOf("NAME")), k)
                 add(simpleKey("start"), "start")
                 add(simpleKey("scope", "experimental"), "scope")
             }
             "profile" -> { add(simpleKey("url"), "url"); add(simpleKey("version"), "version") }
             "template" -> { add(simpleKey("id"), "id"); add(simpleKey("sem_ver"), "sem_ver") }
             "preprocessor" -> {
-                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \"\$resource\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"not of\"\n  criteria: \"\$CRIT\$\"", listOf("ATTR", "CRIT")), "fhirCondition")
-                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \"\$archetype\"\n  targetAttribute: \"\$ATTR\$\"\n  operator: \"not of\"\n  criteria: \"\$CRIT\$\"", listOf("ATTR", "CRIT")), "openehrCondition")
-                add(block("hierarchy", "hierarchy:\n  with:\n    fhir: \"\$resource\"\n    openehr: \"\$archetype/\$EVENTS\$\"\n  split:\n    fhir:\n      create: \"resource\"", listOf("EVENTS")), "hierarchy")
+                add(block("fhirCondition", "fhirCondition:\n  targetRoot: \$resource\n  targetAttribute: \$ATTR\$\n  operator: not of\n  criteria: \$CRIT\$", listOf("ATTR", "CRIT")), "fhirCondition")
+                add(block("openehrCondition", "openehrCondition:\n  targetRoot: \$archetype\n  targetAttribute: \$ATTR\$\n  operator: not of\n  criteria: \$CRIT\$", listOf("ATTR", "CRIT")), "openehrCondition")
+                add(block("hierarchy", "hierarchy:\n  with:\n    fhir: \$resource\n    openehr: \$archetype/\$EVENTS\$\n  split:\n    fhir:\n      create: resource", listOf("EVENTS")), "hierarchy")
             }
-            "hierarchy" -> { add(block("with", "with:\n  fhir: \"\$FHIR\$\"\n  openehr: \"\$OPENEHR\$\"", listOf("FHIR", "OPENEHR")), "with"); add(block("split", "split:\n  fhir:\n    create: \"resource\"", emptyList()), "split") }
-            "split" -> { add(block("fhir", "fhir:\n  create: \"resource\"", emptyList()), "fhir"); add(block("openehr", "openehr:\n  create: \"event\"\n  path: \"\$PATH\$\"\n  unique:\n    - \"\$U\$\"", listOf("PATH", "U")), "openehr") }
+            "hierarchy" -> { add(block("with", "with:\n  fhir: \$FHIR\$\n  openehr: \$OPENEHR\$", listOf("FHIR", "OPENEHR")), "with"); add(block("split", "split:\n  fhir:\n    create: resource", emptyList()), "split") }
+            "split" -> { add(block("fhir", "fhir:\n  create: resource", emptyList()), "fhir"); add(block("openehr", "openehr:\n  create: event\n  path: \$PATH\$\n  unique:\n    - \$U\$", listOf("PATH", "U")), "openehr") }
         }
         return out
     }
@@ -206,7 +206,7 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
             .withInsertHandler(TemplateInsertHandler(text, variables, extraIndent = 0))
 
     private fun methodSkeleton(withExtension: Boolean, inItem: Boolean): LookupElement {
-        val text = "name: \"\$NAME\$\"\n" + (if (withExtension) "extension: \"add\"\n" else "") + "with:\n  fhir: \"\$FHIR\$\"\n  openehr: \"\$OPENEHR\$\""
+        val text = "name: \$NAME\$\n" + (if (withExtension) "extension: add\n" else "") + "with:\n  fhir: \$FHIR\$\n  openehr: \$OPENEHR\$"
         return PrioritizedLookupElement.withPriority(
             LookupElementBuilder.create("name").withTailText("  method block (name / with: fhir, openehr)", true).withTypeText("skeleton", true)
                 .withInsertHandler(TemplateInsertHandler(text, listOf("NAME", "FHIR", "OPENEHR"), extraIndent = 0)), 30.0)
@@ -214,7 +214,7 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
 
     private fun manualEntrySkeleton(inItem: Boolean): LookupElement =
         LookupElementBuilder.create("name").withTailText("  manual entry (name / fhir path+value)", true).withTypeText("skeleton", true)
-            .withInsertHandler(TemplateInsertHandler("name: \"\$NAME\$\"\nfhir:\n  - path: \"\$PATH\$\"\n    value: \"\$VALUE\$\"", listOf("NAME", "PATH", "VALUE"), extraIndent = 0))
+            .withInsertHandler(TemplateInsertHandler("name: \$NAME\$\nfhir:\n  - path: \$PATH\$\n    value: \$VALUE\$", listOf("NAME", "PATH", "VALUE"), extraIndent = 0))
 
     /** inserts `key: ` and leaves the caret after it; triggers the value popup */
     private object KeyInsertHandler : InsertHandler<LookupElement> {
@@ -240,7 +240,7 @@ class FhirConnectKeywordCompletionContributor : CompletionContributor() {
             val template = TemplateManager.getInstance(context.project).createTemplate("fhirconnect", "fhirconnect", body) as TemplateImpl
             template.isToReformat = false
             template.isToIndent = false
-            for (v in variables.distinct()) template.addVariable(v, "", "\"\"", true)
+            for (v in variables.distinct()) template.addVariable(v, "", "", true)
             context.editor.caretModel.moveToOffset(start)
             TemplateManager.getInstance(context.project).startTemplate(context.editor, template)
         }
