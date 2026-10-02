@@ -18,43 +18,32 @@ import java.awt.Font
 
 /** Colour keys, with theme-aware fallbacks; editable under Settings → Editor → Color Scheme → FHIRconnect. */
 object FhirConnectColors {
-    /** openEHR path incl. its variables ($archetype, $composition, $openehrRoot) */
-    val OPENEHR_ATTRIBUTE: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_OPENEHR_ATTRIBUTE", DefaultLanguageHighlighterColors.INSTANCE_FIELD)
-    /** FHIR path incl. its variables ($resource, $fhirRoot) */
-    val FHIR_ELEMENT: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_FHIR_ELEMENT", DefaultLanguageHighlighterColors.PARAMETER)
-    val ARCHETYPE_ID: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_ARCHETYPE_ID", DefaultLanguageHighlighterColors.CLASS_NAME)
+    /** at-codes inside paths - the only thing coloured inside a path */
     val NODE_ID: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_NODE_ID", DefaultLanguageHighlighterColors.NUMBER)
-    val FUNCTION: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_FUNCTION", DefaultLanguageHighlighterColors.FUNCTION_CALL)
-    /** quoted name predicates and literal values (criteria, manual value) */
+    /** literal values: criteria, manual value */
     val LITERAL: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_LITERAL", DefaultLanguageHighlighterColors.STRING)
     val STRUCTURE_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_STRUCTURE_KEY", DefaultLanguageHighlighterColors.KEYWORD)
     /** fhirCondition / openehrCondition blocks and their keys: muted, secondary machinery */
     val CONDITION_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_CONDITION_KEY", DefaultLanguageHighlighterColors.METADATA)
-    /** method names: default text, bold - a declaration, not a link */
+    /** method names: default text, bold */
     val METHOD_NAME: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_METHOD_NAME", TextAttributes(null, null, null, null, Font.BOLD))
     val ENUM_VALUE: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_ENUM_VALUE", DefaultLanguageHighlighterColors.CONSTANT)
-    val MAPPING_REFERENCE: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_MAPPING_REFERENCE", DefaultLanguageHighlighterColors.STATIC_FIELD)
 }
 
-/** Semantic colouring of FHIRconnect files on top of the YAML highlighter. */
+/**
+ * Semantic colouring of FHIRconnect files on top of the YAML highlighter. Deliberately sparse:
+ * paths and mapping references stay in the default text colour, only at-codes inside them are marked.
+ */
 class FhirConnectAnnotator : Annotator {
 
     private val pathKeys = setOf("fhir", "openehr", "targetRoot", "targetAttribute", "path", "unique", "appendTo")
-    private val fhirKeys = setOf("fhir", "appendTo")
-    private val referenceKeys = setOf("slotArchetype", "slotContext", "extends", "start")
     private val structureKeys = setOf("with", "followedBy", "reference", "manual", "slotArchetype", "slotContext", "link", "mappingCode", "conceptmap",
         "participationsFunction", "extension", "appendTo", "unidirectional", "preprocessor", "hierarchy", "split", "mappings", "context")
     private val conditionKeys = setOf("fhirCondition", "openehrCondition", "targetRoot", "targetAttribute", "targetAttributes", "operator", "criteria", "criterias", "identifying")
     private val literalKeys = setOf("criteria", "criterias", "value")
     private val enumKeys = setOf("extension", "unidirectional", "operator", "type", "create", "scope")
 
-    private val variable = Regex("\\$[A-Za-z]+")
-    private val archetypeId = Regex("openEHR-EHR-[A-Z_]+\\.[A-Za-z0-9_\\-]+\\.v\\d+")
     private val nodeId = Regex("\\bat\\d{4,}(?:\\.\\d+)*\\b|\\bid\\d+(?:\\.\\d+)*\\b")
-    private val function = Regex("\\b(?:ofType|as|resolve|where|exists|first|last|empty)\\s*\\([^)]*\\)")
-    private val namePredicate = Regex("'[^']*'")
-    private val word = Regex("[A-Za-z_][A-Za-z0-9_]*")
-    private val reserved = setOf("and", "name", "value")
 
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         if (element !is YAMLKeyValue) return
@@ -73,28 +62,10 @@ class FhirConnectAnnotator : Annotator {
 
         when {
             key == "name" && (kind == "method" || kind == "manualEntry") -> mark(holder, contentRange(value), FhirConnectColors.METHOD_NAME)
-            key in referenceKeys -> mark(holder, contentRange(value), FhirConnectColors.MAPPING_REFERENCE)
             key in enumKeys -> mark(holder, contentRange(value), FhirConnectColors.ENUM_VALUE)
             key in literalKeys -> mark(holder, contentRange(value), FhirConnectColors.LITERAL)
-            key in pathKeys -> annotatePath(value, isFhir(key, element), holder)
+            key in pathKeys -> annotateNodeIds(value, holder)
         }
-    }
-
-    private fun isFhir(key: String, kv: YAMLKeyValue): Boolean {
-        if (key in fhirKeys) return true
-        if (key == "openehr") return false
-        // targetRoot / targetAttribute: side from the condition they sit in; path: side from the list key; unique: side of the split
-        var p: PsiElement? = kv.parent
-        while (p != null && p !is YAMLFile) {
-            if (p is YAMLKeyValue) {
-                when (p.keyText) {
-                    "fhirCondition", "fhir" -> return true
-                    "openehrCondition", "openehr" -> return false
-                }
-            }
-            p = p.parent
-        }
-        return true
     }
 
     private fun contentRange(scalar: YAMLScalar): TextRange {
@@ -106,26 +77,10 @@ class FhirConnectAnnotator : Annotator {
         return TextRange(r.startOffset + s, r.startOffset + e)
     }
 
-    private fun annotatePath(scalar: YAMLScalar, fhir: Boolean, holder: AnnotationHolder) {
-        val range = contentRange(scalar)
-        val text = scalar.text.substring(range.startOffset - scalar.textRange.startOffset, range.endOffset - scalar.textRange.startOffset)
-        val base = range.startOffset
-        val taken = BooleanArray(text.length)
-        fun take(m: MatchResult, key: TextAttributesKey) {
-            if ((m.range.first..m.range.last).any { taken[it] }) return
-            for (i in m.range) taken[i] = true
-            mark(holder, TextRange(base + m.range.first, base + m.range.last + 1), key)
-        }
-        val side = if (fhir) FhirConnectColors.FHIR_ELEMENT else FhirConnectColors.OPENEHR_ATTRIBUTE
-        namePredicate.findAll(text).forEach { take(it, FhirConnectColors.LITERAL) }
-        // variables are part of the path: same colour as their side, no keyword look
-        variable.findAll(text).forEach { take(it, side) }
-        archetypeId.findAll(text).forEach { take(it, FhirConnectColors.ARCHETYPE_ID) }
-        nodeId.findAll(text).forEach { take(it, FhirConnectColors.NODE_ID) }
-        function.findAll(text).forEach { take(it, FhirConnectColors.FUNCTION) }
-        word.findAll(text).forEach { m ->
-            if (m.value in reserved) return@forEach
-            take(m, side)
+    private fun annotateNodeIds(scalar: YAMLScalar, holder: AnnotationHolder) {
+        val base = scalar.textRange.startOffset
+        nodeId.findAll(scalar.text).forEach { m ->
+            mark(holder, TextRange(base + m.range.first, base + m.range.last + 1), FhirConnectColors.NODE_ID)
         }
     }
 

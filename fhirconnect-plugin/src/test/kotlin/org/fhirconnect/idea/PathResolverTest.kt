@@ -471,15 +471,13 @@ mappings:
         val infos = myFixture.doHighlighting(com.intellij.lang.annotation.HighlightSeverity.INFORMATION)
             .filter { it.forcedTextAttributesKey != null }
         val byKey = infos.groupBy { it.forcedTextAttributesKey!!.externalName }
-        assertFalse("variables must not get their own colour: " + byKey.keys, byKey.containsKey("FHIRCONNECT_VARIABLE"))
-        for (k in listOf("FHIRCONNECT_NODE_ID", "FHIRCONNECT_ARCHETYPE_ID", "FHIRCONNECT_STRUCTURE_KEY", "FHIRCONNECT_ENUM_VALUE",
-            "FHIRCONNECT_METHOD_NAME", "FHIRCONNECT_CONDITION_KEY", "FHIRCONNECT_LITERAL", "FHIRCONNECT_OPENEHR_ATTRIBUTE", "FHIRCONNECT_FHIR_ELEMENT")) {
+        for (k in listOf("FHIRCONNECT_NODE_ID", "FHIRCONNECT_STRUCTURE_KEY", "FHIRCONNECT_ENUM_VALUE",
+            "FHIRCONNECT_METHOD_NAME", "FHIRCONNECT_CONDITION_KEY", "FHIRCONNECT_LITERAL")) {
             assertTrue("missing $k in " + byKey.keys, byKey.containsKey(k))
         }
-        val oeTexts = byKey["FHIRCONNECT_OPENEHR_ATTRIBUTE"]!!.map { it.text }.toSet()
-        val fhirTexts = byKey["FHIRCONNECT_FHIR_ELEMENT"]!!.map { it.text }.toSet()
-        assertTrue(oeTexts.toString(), oeTexts.contains("\$archetype"))
-        assertTrue(fhirTexts.toString(), fhirTexts.contains("\$resource"))
+        // paths, variables, archetype ids and mapping references stay in the default text colour
+        val texts = infos.map { it.text }
+        assertFalse(texts.toString(), texts.any { it.startsWith("\$") || it.startsWith("openEHR-EHR-") || it == "EVALUATION.problem_diagnosis.v1" })
         val nodeTexts = byKey["FHIRCONNECT_NODE_ID"]!!.map { it.text }.toSet()
         assertTrue(nodeTexts.toString(), nodeTexts.contains("at0077"))
     }
