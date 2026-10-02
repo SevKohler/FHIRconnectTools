@@ -1,0 +1,27 @@
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: ${MAPPING_NAME}
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  extends: ${EXTENDS}
+
+mappings:
+  - name: "metaProfile"
+    extension: "add"
+    unidirectional: "openehr->fhir"
+    with:
+      fhir: "${DS}resource.meta"
+    manual:
+      - name: "profile"
+        fhir:
+          - path: "profile"
+            value: "${PROFILE_URL}"
+
+  - name: ""
+    extension: "add"
+    with:
+      fhir: "${DS}resource."
+      openehr: "${DS}archetype/"

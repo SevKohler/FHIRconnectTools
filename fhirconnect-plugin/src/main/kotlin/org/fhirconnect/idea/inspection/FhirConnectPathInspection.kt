@@ -23,9 +23,41 @@ class FhirConnectPathInspection : LocalInspectionTool() {
         val file = holder.file as? YAMLFile ?: return PsiElementVisitor.EMPTY_VISITOR
         if (!MappingFiles.isMappingFile(file)) return PsiElementVisitor.EMPTY_VISITOR
         val ctx = MappingFiles.contextOf(file) ?: return PsiElementVisitor.EMPTY_VISITOR
+        val fileType = org.fhirconnect.idea.grammar.FhirConnectGrammar.fileType(MappingFiles.topMapping(file))
         return object : PsiElementVisitor() {
             override fun visitElement(element: PsiElement) {
-                if (element is YAMLKeyValue) check(element, ctx, holder)
+                if (element is YAMLKeyValue) {
+                    check(element, ctx, holder)
+                    checkKey(element, fileType, holder)
+                }
+            }
+        }
+    }
+
+    /** grammar layer: keys that do not belong in their block, extension methods in the wrong place */
+    private fun checkKey(kv: YAMLKeyValue, fileType: String, holder: ProblemsHolder) {
+        val owner = kv.parent as? YAMLMapping ?: return
+        val kind = org.fhirconnect.idea.grammar.FhirConnectGrammar.blockKind(owner)
+        val allowed = org.fhirconnect.idea.grammar.FhirConnectGrammar.allowedKeys(kind) ?: return
+        val key = kv.keyText
+        val anchor = kv.key ?: kv
+        if (key !in allowed) {
+            val hint = if (key == "mappings" && kind == "method") " (child methods go under followedBy.mappings)" else ""
+            holder.registerProblem(anchor, "FHIRconnect: unknown key '$key' in $kind block$hint. Allowed: ${allowed.sorted().joinToString(", ")}", ProblemHighlightType.WARNING)
+            return
+        }
+        if (key in org.fhirconnect.idea.grammar.FhirConnectGrammar.EXPERIMENTAL) {
+            holder.registerProblem(anchor, "FHIRconnect: '$key' is experimental (sub-context proposal), not in the published v1.0.0 spec", ProblemHighlightType.WEAK_WARNING)
+        }
+        if (kind == "method") {
+            val item = owner.parent as? org.jetbrains.yaml.psi.YAMLSequenceItem ?: return
+            val top = org.fhirconnect.idea.grammar.FhirConnectGrammar.isTopLevelMethod(item)
+            if (key == "extension") {
+                if (fileType != "extension") holder.registerProblem(anchor, "FHIRconnect: 'extension' is only valid in type: extension files", ProblemHighlightType.WARNING)
+                else if (!top) holder.registerProblem(anchor, "FHIRconnect: 'extension' on a nested method has no effect; only top-level methods are extension methods", ProblemHighlightType.WEAK_WARNING)
+            }
+            if (key == "name" && top && fileType == "extension" && owner.getKeyValueByKey("extension") == null) {
+                holder.registerProblem(anchor, "FHIRconnect: top-level methods in an extension file need extension: add | append | overwrite", ProblemHighlightType.WARNING)
             }
         }
     }

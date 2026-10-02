@@ -236,6 +236,206 @@ mappings:
         assertTrue(ctx.notes.toString(), ctx.notes.any { it.contains("did you mean KDS_Diagnose") })
     }
 
+    private fun complFile(fhir: String, openehr: String): String = """
+grammar: FHIRConnect/v1.0.0
+type: model
+metadata:
+  name: EVALUATION.compl.v1
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  openEhrConfig:
+    archetype: openEHR-EHR-EVALUATION.problem_diagnosis.v1
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/Condition
+mappings:
+  - name: "a"
+    with:
+      fhir: "$fhir"
+      openehr: "$openehr"
+""".trimIndent()
+
+    fun testCompletionOffersWholePathsByLabel() {
+        myFixture.addFileToProject("kds/model/compl.yml", complFile("<caret>", ""))
+        FhirConnectIndex.getInstance(project).invalidate()
+        myFixture.configureFromTempProjectFile("kds/model/compl.yml")
+        val fhir = myFixture.completeBasic()?.map { it.lookupString } ?: emptyList()
+        assertTrue(fhir.toString(), fhir.contains("\$resource.onset.ofType(Period)"))
+        assertTrue(fhir.toString(), fhir.contains("\$resource.code"))
+        assertFalse("segment by segment, no deep paths: " + fhir, fhir.contains("\$resource.code.coding.system"))
+        assertTrue(fhir.toString(), fhir.contains("\$resource"))
+
+        myFixture.addFileToProject("kds/model/compl2.yml", complFile("x", "<caret>"))
+        FhirConnectIndex.getInstance(project).invalidate()
+        myFixture.configureFromTempProjectFile("kds/model/compl2.yml")
+        val oe = myFixture.completeBasic()?.map { it.lookupString } ?: emptyList()
+        assertTrue(oe.toString(), oe.contains("\$archetype/data[at0001]/items[at0077]"))
+        assertTrue(oe.toString(), oe.contains("\$archetype"))
+        val onset = myFixture.lookupElements?.firstOrNull { it.lookupString == "\$archetype/data[at0001]/items[at0077]" }
+        assertNotNull(onset)
+        assertTrue(onset!!.allLookupStrings.toString(), onset.allLookupStrings.any { it.contains("at0077") })
+    }
+
+    fun testCompletionInSlottedModelUsesFhirRoot() {
+        // CLUSTER.anatomical_location.v1 is slotted from problem_diagnosis at Condition.bodySite
+        myFixture.addFileToProject("kds/model/anat_compl.yml", """
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: anat_compl
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  extends: CLUSTER.anatomical_location.v1
+mappings:
+  - name: "a"
+    extension: "add"
+    with:
+      fhir: <caret>
+      openehr: "x"
+""".trimIndent())
+        FhirConnectIndex.getInstance(project).invalidate()
+        myFixture.configureFromTempProjectFile("kds/model/anat_compl.yml")
+        val items = myFixture.completeBasic()?.map { it.lookupString } ?: emptyList()
+        assertTrue(items.toString(), items.contains("coding"))
+        assertTrue(items.toString(), items.contains("\$resource.code"))
+        assertFalse(items.toString(), items.contains("\$fhirRoot.coding"))
+        assertFalse(items.toString(), items.contains("\$resource.coding"))
+        // accepting an item quotes the unquoted value
+        val coding = myFixture.lookupElements!!.first { it.lookupString == "coding" }
+        myFixture.lookup.currentItem = coding
+        myFixture.finishLookup('\n')
+        assertTrue(myFixture.editor.document.text, myFixture.editor.document.text.contains("fhir: \"coding\""))
+    }
+
+    fun testKeywordCompletion() {
+        myFixture.addFileToProject("kds/diagnose/kw.yml", """
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: kw_ext
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  extends: EVALUATION.problem_diagnosis.v1
+mappings:
+  - name: "a"
+    extension: <caret>
+    with:
+      fhir: "x"
+      openehr: "y"
+""".trimIndent())
+        myFixture.configureFromTempProjectFile("kds/diagnose/kw.yml")
+        val values = myFixture.completeBasic()?.map { it.lookupString } ?: emptyList()
+        assertTrue(values.toString(), values.containsAll(listOf("add", "append", "overwrite")))
+
+        myFixture.addFileToProject("kds/diagnose/kw2.yml", """
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: kw_ext2
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  extends: EVALUATION.problem_diagnosis.v1
+mappings:
+  - name: "a"
+    extension: "add"
+    with:
+      fhir: "x"
+      openehr: "y"
+  - na<caret>
+""".trimIndent())
+        myFixture.configureFromTempProjectFile("kds/diagnose/kw2.yml")
+        val items = myFixture.completeBasic()
+        val names = items?.map { it.lookupString } ?: emptyList()
+        assertTrue(names.toString(), names.contains("name"))
+        myFixture.lookup.currentItem = items!!.first { it.lookupString == "name" }
+        myFixture.finishLookup('\n')
+        val text = myFixture.editor.document.text
+        assertTrue(text, text.contains("  - name: \"\"\n    extension: \"add\"\n    with:\n      fhir: \"\"\n      openehr: \"\""))
+    }
+
+    fun testUnknownKeyInspectionAndNoFalsePositivesOnFixtures() {
+        myFixture.enableInspections(FhirConnectPathInspection::class.java)
+        myFixture.addFileToProject("kds/diagnose/typo_ext.yml", """
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: typo_ext
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  extends: EVALUATION.problem_diagnosis.v1
+mappings:
+  - name: "a"
+    extensio: "add"
+    withh:
+      fhir: "x"
+  - name: "b"
+    with:
+      fhir: "${'$'}resource.note"
+      openehr: "${'$'}archetype/data[at0001]/items[at0069]"
+    mappings:
+      - name: "c"
+""".trimIndent())
+        FhirConnectIndex.getInstance(project).invalidate()
+        myFixture.configureFromTempProjectFile("kds/diagnose/typo_ext.yml")
+        val w = myFixture.doHighlighting().filter { it.description?.startsWith("FHIRconnect") == true }.map { it.description!! }
+        assertTrue(w.toString(), w.any { it.contains("unknown key 'extensio'") })
+        assertTrue(w.toString(), w.any { it.contains("unknown key 'withh'") })
+        assertTrue(w.toString(), w.any { it.contains("unknown key 'mappings'") && it.contains("followedBy") })
+        assertTrue(w.toString(), w.any { it.contains("need extension: add") })
+
+        // every fixture file of the library must stay free of unknown-key findings
+        for (path in listOf("kds/diagnose/KDS_problem_diagnose.yml", "kds/diagnose/KDS_diagnose.context.yaml", "kds/diagnose/KDS_lebensphase.yml",
+            "kds/diagnose/KDS_problem_qualifier.yml", "kds/model/problem_diagnosis.v1.yml", "kds/model/anatomical_location.v1.yml",
+            "kds/model/problem_qualifier.v2.yml", "kds/model/report.v1.Condition.yml", "kds/model/lebensphase.v0.yml")) {
+            myFixture.configureFromTempProjectFile(path)
+            val unknown = myFixture.doHighlighting().filter { it.description?.contains("unknown key") == true }.map { it.description!! }
+            assertTrue("$path: $unknown", unknown.isEmpty())
+        }
+    }
+
+    fun testNewFileTemplates() {
+        val snap = FhirConnectIndex.getInstance(project).get()
+        val mgr = com.intellij.ide.fileTemplates.FileTemplateManager.getInstance(project)
+        val dir = myFixture.findFileInTempDir("kds/diagnose").path
+        val model = mgr.getInternalTemplate(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.TEMPLATE_MODEL)
+        val mt = model.getText(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.properties(project, snap, model.name, "OBSERVATION.body_weight.v2", dir))
+        assertTrue(mt, mt.contains("name: OBSERVATION.body_weight.v2") && mt.contains("archetype: openEHR-EHR-OBSERVATION.body_weight.v2") && mt.contains("\$resource.recorder"))
+        assertEquals("body_weight.v2.yml", org.fhirconnect.idea.actions.NewFhirConnectMappingAction.fileNameFor(model.name, "OBSERVATION.body_weight.v2"))
+
+        val ctx = mgr.getInternalTemplate(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.TEMPLATE_CONTEXT)
+        val ct = ctx.getText(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.properties(project, snap, ctx.name, "KDS_new.context", dir))
+        assertTrue(ct, ct.contains("id: \"KDS_Diagnose\""))
+        assertTrue(ct, ct.contains("- \"EVALUATION.problem_diagnosis.v1\""))
+        assertTrue(ct, ct.contains("- \"KDS_problem_diagnose\""))
+        assertTrue(ct, ct.contains("start: \"EVALUATION.problem_diagnosis.v1\""))
+        assertTrue(ct, ct.contains("url: \"https://www.medizininformatik-initiative.de/fhir/core/modul-diagnose/StructureDefinition/Diagnose\""))
+
+        val ext = mgr.getInternalTemplate(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.TEMPLATE_EXTENSION)
+        val et = ext.getText(org.fhirconnect.idea.actions.NewFhirConnectMappingAction.properties(project, snap, ext.name, "KDS_new_ext", dir))
+        assertTrue(et, et.contains("extends: EVALUATION.problem_diagnosis.v1") && et.contains("extension: \"add\"") && et.contains("\$resource.meta"))
+    }
+
+    fun testGhostText() {
+        val set = org.fhirconnect.idea.completion.CandidateSet(Side.OPENEHR, "da", "da", listOf(
+            org.fhirconnect.idea.completion.Candidate("data[at0001]/items[at0077]", emptyList(), "", "", false),
+            org.fhirconnect.idea.completion.Candidate("data[at0001]/items[at0002]", emptyList(), "", "", false),
+            org.fhirconnect.idea.completion.Candidate("data[at0001]", emptyList(), "", "", true),
+        ))
+        assertEquals("ta[at0001]", org.fhirconnect.idea.completion.PathCandidates.ghostText(set))
+        val single = org.fhirconnect.idea.completion.CandidateSet(Side.FHIR, "ons", "ons", listOf(
+            org.fhirconnect.idea.completion.Candidate("onset.ofType(Period)", emptyList(), "", "", false)))
+        assertEquals("et.ofType(Period)", org.fhirconnect.idea.completion.PathCandidates.ghostText(single))
+    }
+
     fun testFhirBaseResolver() {
         val r = FhirPathResolver(emptyMap())
         assertEquals("Period.start", r.find("Condition.onset.ofType(Period).start", null)!!.element.path)

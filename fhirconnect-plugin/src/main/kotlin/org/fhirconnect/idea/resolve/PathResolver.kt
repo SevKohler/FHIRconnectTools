@@ -241,6 +241,14 @@ object PathResolver {
         return Parent(parentItem, via)
     }
 
+    /** true when the method is directly under the file's `mappings:` (its paths must start with a variable). */
+    fun isTopLevel(item: YAMLSequenceItem): Boolean {
+        if (parentOf(item) != null) return false
+        val mapping = item.value as? YAMLMapping
+        // an append method's children are relative to the appendTo target, the method itself has no with
+        return scalar(mapping, "extension") != "append"
+    }
+
     fun scalar(mapping: YAMLMapping?, key: String): String? =
         (mapping?.getKeyValueByKey(key)?.value as? YAMLScalar)?.textValue?.trim()
 

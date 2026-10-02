@@ -9,6 +9,10 @@
     <resource-bundle>messages.FhirConnectBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
+        <internalFileTemplate name="FHIRconnect Model Mapping"/>
+        <internalFileTemplate name="FHIRconnect Extension Mapping"/>
+        <internalFileTemplate name="FHIRconnect Context Mapping"/>
+
         <codeInsight.declarativeInlayProvider
                 language="yaml"
                 implementationClass="org.fhirconnect.idea.hints.FhirConnectInlayHintsProvider"
@@ -35,12 +39,26 @@
         <gotoDeclarationHandler
                 implementation="org.fhirconnect.idea.navigation.FhirConnectGotoDeclarationHandler"/>
 
+        <typedHandler implementation="org.fhirconnect.idea.completion.FhirConnectTypedHandler"/>
+        <completion.confidence language="yaml" order="first"
+                               implementationClass="org.fhirconnect.idea.completion.FhirConnectCompletionConfidence"/>
+        <inline.completion.provider implementation="org.fhirconnect.idea.completion.FhirConnectInlineCompletionProvider"/>
+
         <completion.contributor
                 language="yaml"
                 implementationClass="org.fhirconnect.idea.completion.FhirConnectCompletionContributor"/>
+        <completion.contributor
+                language="yaml"
+                implementationClass="org.fhirconnect.idea.completion.FhirConnectKeywordCompletionContributor"/>
     </extensions>
 
     <actions>
+        <action id="org.fhirconnect.idea.newMapping"
+                class="org.fhirconnect.idea.actions.NewFhirConnectMappingAction"
+                text="FHIRconnect Mapping"
+                description="Creates a FHIRconnect model, extension or context mapping file">
+            <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
+        </action>
         <action id="org.fhirconnect.idea.showMappingContext"
                 class="org.fhirconnect.idea.actions.ShowMappingContextAction"
                 text="FHIRconnect: Show Mapping Context"

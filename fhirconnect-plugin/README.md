@@ -49,10 +49,27 @@ Resolution follows the specification: `followedBy` children extend the parent's 
 - **Ctrl+click navigation** on `slotArchetype`, `slotContext`, `extends`, `start`, `appendTo` and the
   context lists. Inside a project folder, `slotArchetype` jumps to the project's extension of that model
   when the folder's context lists one; otherwise to the model. `appendTo` jumps to the target method.
+- **Keyword completion and skeletons**: enum values (`extension: add | append | overwrite`,
+  `unidirectional`, `operator`, `type`, `create`, …) and the keys valid in the current block. Typing
+  `- na` in a `mappings:` list inserts a whole method (`name`, `extension: add` in extension files,
+  `with: fhir / openehr`) as a live template with tab stops; `followedBy`, `fhirCondition`, `manual`,
+  `reference`, `link`, `context`, `preprocessor` insert their blocks the same way. The popup opens while typing.
+- **New file wizard**: File → New → FHIRconnect Mapping, with model / extension / context kinds. The
+  header is filled in; template id, profile url, models and extensions are pre-filled from what the
+  index finds in the target folder, so a new context matches the resources that are actually there.
+  Model files are named after the archetype without the RM type prefix, as in the library.
 - **Inspections**: openEHR path not in the template, FHIR path not in the profile / R4 base,
-  unresolved `slotArchetype`, `extends`, `appendTo`, and context `archetypes` / `extensions` / `start`.
-- **Completion** inside `fhir:` / `openehr:` values: next path segment from the template or the
-  profile (choice types are offered as `value.ofType(Quantity)` etc.).
+  unresolved `slotArchetype`, `extends`, `appendTo`, and context `archetypes` / `extensions` / `start`;
+  unknown keys per block (typos such as `withh`, `extensio`, `mappings` directly under a method),
+  `extension:` outside extension files or on nested methods, top-level extension methods without `extension:`.
+- **Path completion** inside `fhir:` / `openehr:` values (Ctrl+Space): the next segment, and whole
+  paths to every node below the current position, matchable by label or at-code. Typing `onset` in an
+  empty `openehr: ""` offers `$archetype/data[at0001]/items[at0077]  Date/time of onset · DV_DATE_TIME 0..1`;
+  on the FHIR side `$resource.onset.ofType(Period)`, `$resource.code.coding.system`, … Inside `followedBy`
+  the offered paths are relative to the parent method, as the grammar requires. The popup opens by
+  itself while typing in these values, and the longest common continuation of the matching paths is
+  shown as grey inline text that Tab accepts (needs *Settings → Editor → General → Inline Completion*
+  enabled, which is the default).
 
 ## Project layout the plugin expects
 

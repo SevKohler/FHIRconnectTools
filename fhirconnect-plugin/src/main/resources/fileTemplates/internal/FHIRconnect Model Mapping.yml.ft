@@ -1,0 +1,24 @@
+grammar: FHIRConnect/v1.0.0
+type: model
+metadata:
+  name: ${MAPPING_NAME}
+  version: "0.0.1"
+spec:
+  system: FHIR
+  version: R4
+  openEhrConfig:
+    archetype: ${ARCHETYPE}
+    revision: "1.0.0"
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/${RESOURCE}
+
+mappings:
+  - name: "composer"
+    with:
+      fhir: "${DS}resource.recorder"
+      openehr: "${DS}composition/composer"
+
+  - name: ""
+    with:
+      fhir: "${DS}resource."
+      openehr: "${DS}archetype/"

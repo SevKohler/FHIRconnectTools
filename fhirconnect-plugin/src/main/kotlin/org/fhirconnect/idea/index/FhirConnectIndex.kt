@@ -45,6 +45,8 @@ class IndexSnapshot(
     val allMappings: List<MappingInfo>,
     val templates: List<TemplateModel>,
     val profiles: Map<String, StructureDef>,
+    /** profile url -> file path of the StructureDefinition */
+    val profilePaths: Map<String, String> = emptyMap(),
 ) {
     fun templateById(id: String): TemplateModel? = templates.firstOrNull { it.templateId == id }
 
@@ -212,18 +214,21 @@ class FhirConnectIndex(private val project: Project) : Disposable {
         val all = ArrayList<MappingInfo>()
         val templates = ArrayList<TemplateModel>()
         val profiles = LinkedHashMap<String, StructureDef>()
+        val profilePaths = LinkedHashMap<String, String>()
         val index = ProjectFileIndex.getInstance(project)
         index.iterateContent { vf ->
             if (!vf.isDirectory && isRelevant(vf.name) && vf.length in 1..40_000_000L) {
                 try {
+                    val before = profiles.size
                     consider(vf, mappings, all, templates, profiles)
+                    if (profiles.size > before) profiles.keys.lastOrNull()?.let { profilePaths.putIfAbsent(it, vf.path) }
                 } catch (e: Exception) {
                     log.debug("FHIRconnect index: skipped ${vf.path}: ${e.message}")
                 }
             }
             true
         }
-        return IndexSnapshot(mappings, all, templates, profiles)
+        return IndexSnapshot(mappings, all, templates, profiles, profilePaths)
     }
 
     private fun consider(
