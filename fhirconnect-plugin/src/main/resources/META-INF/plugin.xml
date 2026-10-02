@@ -1,0 +1,52 @@
+<idea-plugin>
+    <id>org.fhirconnect.idea</id>
+    <name>FHIRconnect Paths</name>
+    <vendor url="https://github.com/SevKohler/FHIRconnect-spec">FHIRconnect</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+
+    <resource-bundle>messages.FhirConnectBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.declarativeInlayProvider
+                language="yaml"
+                implementationClass="org.fhirconnect.idea.hints.FhirConnectInlayHintsProvider"
+                isEnabledByDefault="false"
+                group="OTHER_GROUP"
+                providerId="fhirconnect.paths"
+                nameKey="inlay.fhirconnect.paths.name"
+                bundle="messages.FhirConnectBundle"/>
+
+        <localInspection
+                language="yaml"
+                shortName="FhirConnectPathResolution"
+                displayName="FHIRconnect: path or name does not resolve"
+                groupName="FHIRconnect"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="org.fhirconnect.idea.inspection.FhirConnectPathInspection"/>
+
+        <lang.documentationProvider
+                language="yaml"
+                order="first"
+                implementationClass="org.fhirconnect.idea.docs.FhirConnectDocumentationProvider"/>
+
+        <gotoDeclarationHandler
+                implementation="org.fhirconnect.idea.navigation.FhirConnectGotoDeclarationHandler"/>
+
+        <completion.contributor
+                language="yaml"
+                implementationClass="org.fhirconnect.idea.completion.FhirConnectCompletionContributor"/>
+    </extensions>
+
+    <actions>
+        <action id="org.fhirconnect.idea.showMappingContext"
+                class="org.fhirconnect.idea.actions.ShowMappingContextAction"
+                text="FHIRconnect: Show Mapping Context"
+                description="Shows which template, profile and models the plugin associated with the current FHIRconnect mapping file">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

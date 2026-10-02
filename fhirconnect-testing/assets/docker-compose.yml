@@ -1,0 +1,65 @@
+# Local stack for the FHIRconnect test harness.
+#
+#   docker compose -f docker-compose.yml up -d                     # openFHIR + Mongo
+#   docker compose -f docker-compose.yml --profile ehrbase up -d   # + EHRbase for composition validation
+#
+# or let the harness do it: python scripts/openfhir_testkit.py up [--ehrbase]
+#
+# Never point the harness at the public sandbox (sandbox.open-fhir.com): it is shared state and the
+# harness purges and re-uploads mappings.
+
+services:
+  openfhir:
+    image: openfhir/openfhir:latest
+    container_name: fc-openfhir
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_MONGODB_URI: "mongodb://mongodb:27017/openfhir"
+      # more engine detail in the container log; the harness sends x-req-id per case so lines can be
+      # correlated with `docker logs fc-openfhir | grep <context>:<dir>:<case>`
+      LOGGING_LEVEL_COM_SYNTARIC: "DEBUG"
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:7
+    container_name: fc-mongodb
+    ports:
+      - "27017:27017"
+
+  # --- optional: EHRbase, used by the `validation` oracle for fhir->openehr cases -----------------
+  # Configure in testkit.yml:
+  #   ehrbase: {url: http://localhost:8081/ehrbase/rest/openehr/v1, user: ehrbase-user, password: SuperSecretPassword}
+  ehrbase:
+    image: ehrbase/ehrbase:2.6.0
+    container_name: fc-ehrbase
+    profiles: ["ehrbase"]
+    ports:
+      - "8081:8080"
+    environment:
+      DB_URL: jdbc:postgresql://ehrdb:5432/ehrbase
+      DB_USER_ADMIN: ehrbase
+      DB_PASS_ADMIN: ehrbase
+      DB_USER: ehrbase_restricted
+      DB_PASS: ehrbase_restricted
+      SECURITY_AUTHTYPE: BASIC
+      SECURITY_AUTHUSER: ehrbase-user
+      SECURITY_AUTHPASSWORD: SuperSecretPassword
+      SECURITY_AUTHADMINUSER: ehrbase-admin
+      SECURITY_AUTHADMINPASSWORD: EvenMoreSecretPassword
+      SYSTEM_ALLOW_TEMPLATE_OVERWRITE: "true"
+    depends_on:
+      - ehrdb
+
+  ehrdb:
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    container_name: fc-ehrdb
+    profiles: ["ehrbase"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      EHRBASE_USER_ADMIN: ehrbase
+      EHRBASE_PASSWORD_ADMIN: ehrbase
+      EHRBASE_USER: ehrbase_restricted
+      EHRBASE_PASSWORD: ehrbase_restricted

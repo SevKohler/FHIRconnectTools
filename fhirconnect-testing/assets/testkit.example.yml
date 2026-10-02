@@ -1,0 +1,32 @@
+# Harness configuration. Copy next to your test cases as `testkit.yml`; paths are relative to this file.
+# Run everything with:  python <skill>/scripts/openfhir_testkit.py -c testkit.yml run
+
+openfhir: http://localhost:8080          # local engine only (see assets/docker-compose.yml)
+
+# Mapping sources, uploaded recursively. The file type (model / extension / context) is read from
+# the YAML `type:` field, not the filename. Shared models first, then the project.
+mappings:
+  - ../../model                            # FHIRconnect-mapping-lib/model
+  - ..                                     # the project folder (extensions + context files)
+
+# Operational templates (*.opt, ADL 1.4 XML) for every context's template.id
+opts:
+  - ../opts
+
+cases: .                                   # <context>/{expectations.yml,fhir,openehr,golden}
+results: ./results                         # one folder per run + LATEST
+
+timeout: 90                                # seconds per engine call
+
+# Optional: validate fhir->openehr output against the OPT by committing it to EHRbase
+# ehrbase:
+#   url: http://localhost:8081/ehrbase/rest/openehr/v1
+#   user: ehrbase-user
+#   password: SuperSecretPassword
+
+# Optional: validate openehr->fhir output with the HL7 validator CLI
+# fhir_validator:
+#   jar: C:/tools/validator_cli.jar
+#   version: 4.0.1
+#   ig:
+#     - de.medizininformatikinitiative.kerndatensatz.diagnose#2024.0.0

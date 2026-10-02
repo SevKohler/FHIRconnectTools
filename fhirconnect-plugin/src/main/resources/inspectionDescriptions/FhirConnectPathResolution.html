@@ -1,0 +1,13 @@
+<html>
+<body>
+Reports FHIRconnect mapping methods whose resolved <code>openehr</code> path is not a node of the
+operational template / web template associated with the mapping, whose resolved <code>fhir</code>
+path is not an element of the FHIR profile (or base R4 resource), and <code>slotArchetype</code>,
+<code>extends</code> and context references that do not name a known mapping.
+<p>
+Templates and StructureDefinitions are picked up from anywhere in the project (for example a
+<code>resources/</code> folder next to the mapping files). A mapping file is associated through the
+context file in its folder (template id and profile url), or by the archetype it maps.
+</p>
+</body>
+</html>

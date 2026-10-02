@@ -1,0 +1,25 @@
+grammar: FHIRConnect/v1.0.0
+type: context
+metadata:
+  name: PROJECT_module.context
+  version: "0.0.1-alpha"
+spec:
+  system: FHIR
+  version: R4
+
+context:
+  profile:
+    url: "https://example.org/fhir/StructureDefinition/ProfileName"   # meta.profile of the instances
+    version: "1.0.0"
+  template:
+    id: "Template Id"                      # exact OPT template_id
+    sem_ver: "1.0.0"
+  archetypes:                              # model mapping names (TYPE.concept.vN), incl. COMPOSITION/SECTION/CLUSTER models
+    - "TYPE.concept.vN"
+    - "CLUSTER.anatomical_location.v1"
+    - "COMPOSITION.report.v1.Condition"
+  extensions:                              # extension mapping names
+    - "PROJECT_concept"
+  # operational:
+  #   - "provenance"
+  start: "TYPE.concept.vN"                 # entry model the engine starts from

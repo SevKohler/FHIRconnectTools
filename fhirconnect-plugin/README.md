@@ -1,0 +1,117 @@
+# FHIRconnect Paths – IntelliJ plugin
+
+Shows where you are while writing FHIRconnect mappings. For every `fhir:` and `openehr:` value
+(and `targetRoot` / manual `path` values) the plugin resolves the full path the engine will use and
+displays it inline, together with what the template and the FHIR profile say about that node.
+
+```yaml
+mappings:
+  - name: "dateTime"
+    with:
+      fhir: "$resource"                               → Condition  · 0..*
+      openehr: "$archetype"                           → /content[openEHR-EHR-EVALUATION.problem_diagnosis.v1]  · Problem/Diagnose · EVALUATION 1..*
+      type: "NONE"
+    followedBy:
+      mappings:
+        - name: "period"
+          with:
+            fhir: "onset.ofType(Period)"              → Condition.onset[x]  · dateTime|Age|Period|Range|string 0..1
+            openehr: "$archetype"                     → /content[openEHR-EHR-EVALUATION.problem_diagnosis.v1]  · …
+          followedBy:
+            mappings:
+              - name: "start"
+                with:
+                  fhir: "start"                       → Condition.onset.ofType(Period).start  · dateTime 0..1
+                  openehr: "data[at0001]/items[at0077]" → /content[…problem_diagnosis.v1]/data[at0001]/items[at0077]  · Datum/Zeitpunkt des Auftretens · DV_DATE_TIME 0..1
+```
+
+Resolution follows the specification: `followedBy` children extend the parent's paths, `$resource`,
+`$archetype`, `$composition`, `$fhirRoot`, `$openehrRoot` and `$reference` are substituted, `^` and
+`../` walk up, children of a `reference:` block start at the referenced resource type, and top-level
+`extension: append` methods start at the `appendTo` target inside the extended model.
+
+## Features
+
+- **Hover documentation** on any `fhir:` / `openehr:` / `targetRoot` / manual `path` value (mouse hover or
+  Ctrl+Q): the resolved path, template label, RM type and occurrences for openEHR, element type,
+  cardinality, binding and must-support for FHIR, codes and units. Hovering a `slotArchetype`,
+  `extends` or context list entry shows the referenced mapping file and where its archetype sits in
+  the template.
+- **Inline path hints** (end of line) with the same information, off by default; switch on under
+  Settings → Editor → Inlay Hints → Other → FHIRconnect.
+- **Tools → FHIRconnect: Show Mapping Context** (also in the editor popup): which template, profile and
+  `$archetype` root the plugin associated with the current file, and why something was not found.
+- **Slot-aware resolution**: a model that is slotted from somewhere else (`slotArchetype`, or a
+  `slotContext` whose context starts with it) resolves `$fhirRoot` and relative top-level paths from the
+  caller's path, so inside the IPS section model `code.coding` reads `Composition.section.code.coding`.
+  With several callers the nearest one is followed and the others are listed in the hover and in
+  *Show Mapping Context*.
+- **Ctrl+click navigation** on `slotArchetype`, `slotContext`, `extends`, `start`, `appendTo` and the
+  context lists. Inside a project folder, `slotArchetype` jumps to the project's extension of that model
+  when the folder's context lists one; otherwise to the model. `appendTo` jumps to the target method.
+- **Inspections**: openEHR path not in the template, FHIR path not in the profile / R4 base,
+  unresolved `slotArchetype`, `extends`, `appendTo`, and context `archetypes` / `extensions` / `start`.
+- **Completion** inside `fhir:` / `openehr:` values: next path segment from the template or the
+  profile (choice types are offered as `value.ofType(Quantity)` etc.).
+
+## Project layout the plugin expects
+
+Nothing to configure. The plugin indexes every file in the IntelliJ project and recognises:
+
+| file | recognised as |
+|---|---|
+| `*.yml` / `*.yaml` starting with `grammar: FHIRConnect/...` | mapping file (model / extension / context) |
+| `*.opt` / `*.optx` (openEHR operational template XML) | template |
+| `*.json` with `templateId` and `tree` (EHRbase / Better web template) | template |
+| `*.json` with `"resourceType": "StructureDefinition"` (an unpacked IG or FHIR package) | FHIR profile |
+
+A mapping file is associated with a template and a profile through the **context file** that lists
+it (`context.template.id` → template, `context.profile.url` → StructureDefinition). When several
+context files reference the mapping, the one closest in the folder tree wins. A model mapping with
+no context falls back to any indexed template that contains its archetype, and to the bundled FHIR R4
+base definitions for the resource named in `fhirConfig.structureDefinition`.
+
+Suggested layout, matching the official mapping library:
+
+```
+projects/org.highmed/KDS/diagnose/
+  KDS_diagnose.context.yaml
+  KDS_problem_diagnose.yml
+  KDS_composition.yml
+  resources/
+    KDS_Diagnose.opt                       ← template.id "KDS_Diagnose"
+    StructureDefinition-mii-pr-diagnose-condition.json   ← profile.url
+    (any other StructureDefinitions / extensions of the IG)
+```
+
+Profiles that ship only a `differential` are merged onto the bundled R4 base. Base R4 datatypes
+(Period, Quantity, CodeableConcept, Extension, …) are bundled so paths like
+`onset.ofType(Period).start` or `extension.value.ofType(Coding)` resolve without an IG.
+
+## Build
+
+Requires JDK 21. Either build against the IntelliJ Platform SDK (downloaded by Gradle):
+
+```
+./gradlew buildPlugin
+```
+
+or against a locally installed IDE (no SDK download):
+
+```
+./gradlew buildPlugin -PlocalIdePath="C:/Program Files/JetBrains/IntelliJ IDEA 2024.3"
+```
+
+The plugin zip lands in `build/distributions/`. Install it with *Settings → Plugins → ⚙ → Install
+Plugin from Disk…*. `./gradlew runIde` starts a sandbox IDE with the plugin for development.
+Compatible with IntelliJ-based IDEs from 2024.3 (build 243) that bundle the YAML plugin.
+
+To refresh the bundled R4 element index (`src/main/resources/fhir/r4-index.json`):
+`python tools/build_r4_index.py`.
+
+## Relation to other tools
+
+- The [openFHIR FHIRConnect plugin](https://plugins.jetbrains.com/plugin/26927-fhirconnect) adds
+  navigation between models, slots and usages; both plugins can be installed together.
+- The `fhirconnect-mapping` Claude skill in this repository uses the same resolution rules; its
+  `scripts/openehr_paths.py` and `scripts/fhir_paths.py` print the same information on the command line.

@@ -1,0 +1,74 @@
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: PROJECT_concept                       # project naming, e.g. KDS_problem_diagnose
+  version: "0.0.1-alpha"
+spec:
+  system: FHIR
+  version: R4
+  extends: TYPE.concept.vN                    # metadata.name of the model mapping
+
+mappings:
+  - name: "metaProfile"
+    extension: "add"
+    unidirectional: "openehr->fhir"
+    with:
+      fhir: "$resource.meta"
+    manual:
+      - name: "profile"
+        fhir:
+          - path: "profile"
+            value: "https://example.org/fhir/StructureDefinition/ProfileName"
+
+  - name: "compositionMapping"               # pull in the COMPOSITION model for context/composer
+    extension: "add"
+    with:
+      fhir: "$resource"
+      openehr: "$composition"
+    slotArchetype: "COMPOSITION.report.v1.Condition"
+
+  - name: "profileExtension"
+    extension: "add"
+    with:
+      fhir: "$resource.extension"
+      openehr: "$archetype/data[at0001]/items[at0003]"
+    fhirCondition:
+      targetRoot: "$resource.extension"
+      targetAttribute: "url"
+      operator: "one of"
+      criteria: "https://example.org/fhir/StructureDefinition/some-extension"
+    followedBy:
+      mappings:
+        - name: "value"
+          with:
+            fhir: "value.ofType(DateTime)"
+            openehr: "$archetype/data[at0001]/items[at0003]"
+        - name: "url"
+          with:
+            fhir: "$fhirRoot"
+          manual:
+            - name: "url"
+              fhir:
+                - path: "url"
+                  value: "https://example.org/fhir/StructureDefinition/some-extension"
+
+  - name: "codingBySystem"                   # add logic under an existing model method
+    extension: "append"
+    appendTo: "exampleDirect"
+    followedBy:
+      mappings:
+        - name: "icd10"
+          with:
+            fhir: "coding"
+            openehr: "$archetype"
+          fhirCondition:
+            targetRoot: "coding"
+            targetAttribute: "system"
+            operator: "one of"
+            criteria: "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+
+  - name: "exampleChoiceType"                # replace a model method completely
+    extension: "overwrite"
+    with:
+      fhir: "$resource.onset.ofType(DateTime)"
+      openehr: "$archetype/data[at0001]/items[at0077]"

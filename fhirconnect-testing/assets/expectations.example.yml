@@ -1,0 +1,28 @@
+# Expectations for one context mapping. Lives at tests/<context>/expectations.yml.
+# Only humans edit this file. The agent iterating on mappings proposes changes here in its report
+# and never applies them itself (otherwise the easy "fix" for a failing case is a weaker test).
+
+template_id: TEMPLATE_ID                 # exact OPT template id the context maps to
+profile: PROFILE_URL                     # canonical profile url (informational; detection is by meta.profile)
+force_template: false                    # true: pass templateId to toopenehr instead of profile detection
+
+oracles:
+  template: true                         # fhir->openehr output carries the expected template id
+  validation: auto                       # auto = run when ehrbase / fhir_validator is configured, true = required
+  coverage: true                         # every input value appears somewhere in the output
+  roundtrip: true                        # input -> output -> back equals input (after normalisation)
+  golden: true                           # output equals golden/<case>.<openehr|fhir>.json when present
+
+coverage:
+  min_ratio: 1.0                         # lower only with a comment saying which values are known losses
+  ignore_keys: []                        # extra technical keys whose values must not count, e.g. [display]
+
+roundtrip:
+  ignore_keys: []                        # dropped everywhere before comparing (defaults: id, meta, uid, text ...)
+  ignore_paths: []                       # accepted losses, one per line with the reason, e.g.
+                                         # - recorder                      # no openEHR counterpart in this template
+                                         # - entry[].resource.encounter    # context handled by KDS_Fall, not here
+
+golden:
+  ignore_keys: []
+  ignore_paths: []
