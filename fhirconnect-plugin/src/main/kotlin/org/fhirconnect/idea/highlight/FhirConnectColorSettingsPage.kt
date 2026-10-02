@@ -17,7 +17,7 @@ class FhirConnectColorSettingsPage : ColorSettingsPage {
         AttributesDescriptor("Node id inside a path (at0001)", FhirConnectColors.NODE_ID),
         AttributesDescriptor("Literal value (criteria, manual value)", FhirConnectColors.LITERAL),
         AttributesDescriptor("Structure key (with, followedBy, slotArchetype, manual, …)", FhirConnectColors.STRUCTURE_KEY),
-        AttributesDescriptor("Condition key (fhirCondition, targetRoot, operator, …)", FhirConnectColors.CONDITION_KEY),
+        AttributesDescriptor("Condition key (fhirCondition, targetRoot, operator, …) - dark orange", FhirConnectColors.CONDITION_KEY),
         AttributesDescriptor("Method name", FhirConnectColors.METHOD_NAME),
         AttributesDescriptor("Enum value (add, overwrite, one of, NONE, …)", FhirConnectColors.ENUM_VALUE),
     )

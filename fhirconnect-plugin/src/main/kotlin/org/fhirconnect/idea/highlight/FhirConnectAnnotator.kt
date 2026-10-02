@@ -23,8 +23,9 @@ object FhirConnectColors {
     /** literal values: criteria, manual value */
     val LITERAL: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_LITERAL", DefaultLanguageHighlighterColors.STRING)
     val STRUCTURE_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_STRUCTURE_KEY", DefaultLanguageHighlighterColors.KEYWORD)
-    /** fhirCondition / openehrCondition blocks and their keys: muted, secondary machinery */
-    val CONDITION_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_CONDITION_KEY", DefaultLanguageHighlighterColors.METADATA)
+    /** fhirCondition / openehrCondition blocks and their keys: a darker orange than the structure keys */
+    val CONDITION_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_CONDITION_KEY",
+        TextAttributes(com.intellij.ui.JBColor(java.awt.Color(0xA0, 0x52, 0x2D), java.awt.Color(0xA8, 0x5F, 0x1C)), null, null, null, Font.PLAIN))
     /** method names: default text, bold */
     val METHOD_NAME: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_METHOD_NAME", TextAttributes(null, null, null, null, Font.BOLD))
     val ENUM_VALUE: TextAttributesKey = TextAttributesKey.createTextAttributesKey("FHIRCONNECT_ENUM_VALUE", DefaultLanguageHighlighterColors.CONSTANT)
