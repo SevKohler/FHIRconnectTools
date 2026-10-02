@@ -31,6 +31,9 @@
                 level="WARNING"
                 implementationClass="org.fhirconnect.idea.inspection.FhirConnectPathInspection"/>
 
+        <annotator language="yaml" implementationClass="org.fhirconnect.idea.highlight.FhirConnectAnnotator"/>
+        <colorSettingsPage implementation="org.fhirconnect.idea.highlight.FhirConnectColorSettingsPage"/>
+
         <lang.documentationProvider
                 language="yaml"
                 order="first"

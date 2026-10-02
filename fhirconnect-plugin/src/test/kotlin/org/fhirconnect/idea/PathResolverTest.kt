@@ -466,6 +466,23 @@ mappings:
         assertEquals(w.toString(), 3, w.size)
     }
 
+    fun testSemanticColouring() {
+        myFixture.configureFromTempProjectFile("kds/diagnose/KDS_problem_diagnose.yml")
+        val infos = myFixture.doHighlighting(com.intellij.lang.annotation.HighlightSeverity.INFORMATION)
+            .filter { it.forcedTextAttributesKey != null }
+        val byKey = infos.groupBy { it.forcedTextAttributesKey!!.externalName }
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_VARIABLE"))
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_NODE_ID"))
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_ARCHETYPE_ID"))
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_STRUCTURE_KEY"))
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_ENUM_VALUE"))
+        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_METHOD_NAME"))
+        val variableTexts = byKey["FHIRCONNECT_VARIABLE"]!!.map { it.text }.toSet()
+        assertTrue(variableTexts.toString(), variableTexts.contains("\$archetype") && variableTexts.contains("\$resource"))
+        val nodeTexts = byKey["FHIRCONNECT_NODE_ID"]!!.map { it.text }.toSet()
+        assertTrue(nodeTexts.toString(), nodeTexts.contains("at0077"))
+    }
+
     fun testGhostText() {
         val set = org.fhirconnect.idea.completion.CandidateSet(Side.OPENEHR, "da", "da", listOf(
             org.fhirconnect.idea.completion.Candidate("data[at0001]/items[at0077]", emptyList(), "", "", false),
