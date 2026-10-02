@@ -17,6 +17,14 @@ has only been run against mock engines so far.
 The three skills form a pipeline: draft the alignment, write the mapping, test it. Each works on its
 own.
 
+## Install the plugin
+
+Download the zip from the [releases page](https://github.com/SevKohler/FHIRconnectTools/releases)
+(tags `plugin-v*`; pre-releases carry the alpha or beta label) and install it in IntelliJ via
+*Settings → Plugins → ⚙ → Install Plugin from Disk…*. Needs an IntelliJ-based IDE 2024.3 or newer
+with the bundled YAML plugin. Build instructions are in the plugin's
+[README](fhirconnect-plugin/README.md).
+
 ## Install the skills
 
 Copy or symlink the skill folders into `~/.claude/skills/`:
