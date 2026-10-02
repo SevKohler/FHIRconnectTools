@@ -58,10 +58,10 @@ Resolution follows the specification: `followedBy` children extend the parent's 
   header is filled in; template id, profile url, models and extensions are pre-filled from what the
   index finds in the target folder, so a new context matches the resources that are actually there.
   Model files are named after the archetype without the RM type prefix, as in the library.
-- **Semantic colouring**: variables, archetype ids, at-codes, openEHR attributes, FHIR elements,
-  `ofType()`, name predicates, structure keys, method names, enum values and mapping references each
-  get their own colour on top of YAML's; defaults follow the theme and are editable under
-  Settings → Editor → Color Scheme → FHIRconnect.
+- **Semantic colouring**: openEHR paths and FHIR paths in two colours (variables included), archetype
+  ids, at-codes, `ofType()`, literals (criteria, manual values, name predicates), structure keys,
+  condition keys (muted), bold method names, enum values and mapping references; defaults follow the
+  theme and are editable under Settings → Editor → Color Scheme → FHIRconnect.
 - **Inspections**: openEHR path not in the template, FHIR path not in the profile / R4 base,
   unresolved `slotArchetype`, `extends`, `appendTo`, and context `archetypes` / `extensions` / `start`;
   unknown keys per block (typos such as `withh`, `extensio`, `mappings` directly under a method),

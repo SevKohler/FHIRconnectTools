@@ -14,14 +14,14 @@ import javax.swing.Icon
 class FhirConnectColorSettingsPage : ColorSettingsPage {
 
     private val descriptors = arrayOf(
-        AttributesDescriptor("Variable (\$archetype, \$resource, \$fhirRoot, …)", FhirConnectColors.VARIABLE),
+        AttributesDescriptor("openEHR path (\$archetype, data, items, events, …)", FhirConnectColors.OPENEHR_ATTRIBUTE),
+        AttributesDescriptor("FHIR path (\$resource, code, onset, coding, …)", FhirConnectColors.FHIR_ELEMENT),
         AttributesDescriptor("Archetype id (openEHR-EHR-…)", FhirConnectColors.ARCHETYPE_ID),
         AttributesDescriptor("Node id (at0001)", FhirConnectColors.NODE_ID),
-        AttributesDescriptor("openEHR attribute (data, items, events, …)", FhirConnectColors.OPENEHR_ATTRIBUTE),
-        AttributesDescriptor("FHIR element (code, onset, coding, …)", FhirConnectColors.FHIR_ELEMENT),
         AttributesDescriptor("FHIRPath function (ofType, resolve, …)", FhirConnectColors.FUNCTION),
-        AttributesDescriptor("Name predicate ('Problem List')", FhirConnectColors.NAME_PREDICATE),
+        AttributesDescriptor("Literal (criteria, manual value, 'name predicate')", FhirConnectColors.LITERAL),
         AttributesDescriptor("Structure key (with, followedBy, slotArchetype, manual, …)", FhirConnectColors.STRUCTURE_KEY),
+        AttributesDescriptor("Condition key (fhirCondition, targetRoot, operator, …)", FhirConnectColors.CONDITION_KEY),
         AttributesDescriptor("Method name", FhirConnectColors.METHOD_NAME),
         AttributesDescriptor("Enum value (add, overwrite, one of, NONE, …)", FhirConnectColors.ENUM_VALUE),
         AttributesDescriptor("Mapping reference (slotArchetype / extends / start target)", FhirConnectColors.MAPPING_REFERENCE),
@@ -46,8 +46,8 @@ mappings:
   - name: <mname>dateTime</mname>
     <skey>extension</skey>: <enum>overwrite</enum>
     <skey>with</skey>:
-      fhir: <var>${'$'}resource</var>
-      openehr: <var>${'$'}archetype</var>
+      fhir: <fel>${'$'}resource</fel>
+      openehr: <oat>${'$'}archetype</oat>
       type: <enum>NONE</enum>
     <skey>followedBy</skey>:
       mappings:
@@ -57,30 +57,35 @@ mappings:
             openehr: <oat>data</oat>[<nid>at0001</nid>]/<oat>items</oat>[<nid>at0077</nid>]
         - name: <mname>lebensphase</mname>
           <skey>with</skey>:
-            fhir: <var>${'$'}fhirRoot</var>
+            fhir: <fel>${'$'}fhirRoot</fel>
             openehr: <oat>data</oat>[<nid>at0001</nid>]/<oat>items</oat>[<arch>openEHR-EHR-CLUSTER.lebensphase.v0</arch>]
           <skey>slotArchetype</skey>: <ref>CLUSTER.lebensphase.v0</ref>
   - name: <mname>section</mname>
     <skey>extension</skey>: <enum>add</enum>
     <skey>with</skey>:
-      fhir: <var>${'$'}resource</var>.<fel>section</fel>
-      openehr: <var>${'$'}composition</var>/<oat>content</oat>[<arch>openEHR-EHR-SECTION.adhoc.v1</arch> and name/value=<npred>'Problem List'</npred>]
-    <skey>fhirCondition</skey>:
-      targetRoot: <var>${'$'}resource</var>.<fel>section</fel>
-      targetAttribute: <fel>code</fel>.<fel>coding</fel>.<fel>code</fel>
-      operator: <enum>one of</enum>
-      criteria: 11450-4
+      fhir: <fel>${'$'}resource</fel>.<fel>section</fel>
+      openehr: <oat>${'$'}composition</oat>/<oat>content</oat>[<arch>openEHR-EHR-SECTION.adhoc.v1</arch> and name/value=<lit>'Problem List'</lit>]
+    <ckey>fhirCondition</ckey>:
+      <ckey>targetRoot</ckey>: <fel>${'$'}resource</fel>.<fel>section</fel>
+      <ckey>targetAttribute</ckey>: <fel>code</fel>.<fel>coding</fel>.<fel>code</fel>
+      <ckey>operator</ckey>: <enum>one of</enum>
+      <ckey>criteria</ckey>: <lit>11450-4</lit>
+    <skey>manual</skey>:
+      - name: <mname>profile</mname>
+        fhir:
+          - path: <fel>meta</fel>.<fel>profile</fel>
+            value: <lit>http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips</lit>
 """.trimIndent()
 
     override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, TextAttributesKey> = mapOf(
-        "var" to FhirConnectColors.VARIABLE,
-        "arch" to FhirConnectColors.ARCHETYPE_ID,
-        "nid" to FhirConnectColors.NODE_ID,
         "oat" to FhirConnectColors.OPENEHR_ATTRIBUTE,
         "fel" to FhirConnectColors.FHIR_ELEMENT,
+        "arch" to FhirConnectColors.ARCHETYPE_ID,
+        "nid" to FhirConnectColors.NODE_ID,
         "fn" to FhirConnectColors.FUNCTION,
-        "npred" to FhirConnectColors.NAME_PREDICATE,
+        "lit" to FhirConnectColors.LITERAL,
         "skey" to FhirConnectColors.STRUCTURE_KEY,
+        "ckey" to FhirConnectColors.CONDITION_KEY,
         "mname" to FhirConnectColors.METHOD_NAME,
         "enum" to FhirConnectColors.ENUM_VALUE,
         "ref" to FhirConnectColors.MAPPING_REFERENCE,

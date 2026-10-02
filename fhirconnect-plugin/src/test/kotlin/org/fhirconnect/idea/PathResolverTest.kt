@@ -471,14 +471,15 @@ mappings:
         val infos = myFixture.doHighlighting(com.intellij.lang.annotation.HighlightSeverity.INFORMATION)
             .filter { it.forcedTextAttributesKey != null }
         val byKey = infos.groupBy { it.forcedTextAttributesKey!!.externalName }
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_VARIABLE"))
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_NODE_ID"))
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_ARCHETYPE_ID"))
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_STRUCTURE_KEY"))
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_ENUM_VALUE"))
-        assertTrue(byKey.keys.toString(), byKey.containsKey("FHIRCONNECT_METHOD_NAME"))
-        val variableTexts = byKey["FHIRCONNECT_VARIABLE"]!!.map { it.text }.toSet()
-        assertTrue(variableTexts.toString(), variableTexts.contains("\$archetype") && variableTexts.contains("\$resource"))
+        assertFalse("variables must not get their own colour: " + byKey.keys, byKey.containsKey("FHIRCONNECT_VARIABLE"))
+        for (k in listOf("FHIRCONNECT_NODE_ID", "FHIRCONNECT_ARCHETYPE_ID", "FHIRCONNECT_STRUCTURE_KEY", "FHIRCONNECT_ENUM_VALUE",
+            "FHIRCONNECT_METHOD_NAME", "FHIRCONNECT_CONDITION_KEY", "FHIRCONNECT_LITERAL", "FHIRCONNECT_OPENEHR_ATTRIBUTE", "FHIRCONNECT_FHIR_ELEMENT")) {
+            assertTrue("missing $k in " + byKey.keys, byKey.containsKey(k))
+        }
+        val oeTexts = byKey["FHIRCONNECT_OPENEHR_ATTRIBUTE"]!!.map { it.text }.toSet()
+        val fhirTexts = byKey["FHIRCONNECT_FHIR_ELEMENT"]!!.map { it.text }.toSet()
+        assertTrue(oeTexts.toString(), oeTexts.contains("\$archetype"))
+        assertTrue(fhirTexts.toString(), fhirTexts.contains("\$resource"))
         val nodeTexts = byKey["FHIRCONNECT_NODE_ID"]!!.map { it.text }.toSet()
         assertTrue(nodeTexts.toString(), nodeTexts.contains("at0077"))
     }
