@@ -480,6 +480,8 @@ mappings:
         assertFalse(texts.toString(), texts.any { it.startsWith("\$") || it.startsWith("openEHR-EHR-") || it == "EVALUATION.problem_diagnosis.v1" })
         val nodeTexts = byKey["FHIRCONNECT_NODE_ID"]!!.map { it.text }.toSet()
         assertTrue(nodeTexts.toString(), nodeTexts.contains("at0077"))
+        val condTexts = byKey["FHIRCONNECT_CONDITION_KEY"]!!.map { it.text }.toSet()
+        assertTrue(condTexts.toString(), condTexts.containsAll(listOf("manual", "path", "value", "fhirCondition")))
     }
 
     fun testOverwriteOfNestedMethodResolvesAgainstItsParent() {

@@ -38,9 +38,10 @@ object FhirConnectColors {
 class FhirConnectAnnotator : Annotator {
 
     private val pathKeys = setOf("fhir", "openehr", "targetRoot", "targetAttribute", "path", "unique", "appendTo")
-    private val structureKeys = setOf("with", "followedBy", "reference", "manual", "slotArchetype", "slotContext", "link", "mappingCode", "conceptmap",
+    private val structureKeys = setOf("with", "followedBy", "reference", "slotArchetype", "slotContext", "link", "mappingCode", "conceptmap",
         "participationsFunction", "extension", "appendTo", "unidirectional", "preprocessor", "hierarchy", "split", "mappings", "context")
-    private val conditionKeys = setOf("fhirCondition", "openehrCondition", "targetRoot", "targetAttribute", "targetAttributes", "operator", "criteria", "criterias", "identifying")
+    /** condition and manual machinery share the dark orange */
+    private val conditionKeys = setOf("manual", "fhirCondition", "openehrCondition", "targetRoot", "targetAttribute", "targetAttributes", "operator", "criteria", "criterias", "identifying")
     private val literalKeys = setOf("criteria", "criterias", "value")
     private val enumKeys = setOf("extension", "unidirectional", "operator", "type", "create", "scope")
 
@@ -54,12 +55,14 @@ class FhirConnectAnnotator : Annotator {
         val keyEl = element.key
         val value = element.value as? YAMLScalar
 
-        if (keyEl != null && key in structureKeys) mark(holder, keyEl.textRange, FhirConnectColors.STRUCTURE_KEY)
-        if (keyEl != null && key in conditionKeys) mark(holder, keyEl.textRange, FhirConnectColors.CONDITION_KEY)
-
-        if (value == null) return
         val owner = element.parent as? YAMLMapping
         val kind = owner?.let { FhirConnectGrammar.blockKind(it) } ?: ""
+        val insideManual = kind == "manualEntry" || kind == "pathValue"
+
+        if (keyEl != null && key in conditionKeys || keyEl != null && insideManual) mark(holder, keyEl.textRange, FhirConnectColors.CONDITION_KEY)
+        else if (keyEl != null && key in structureKeys) mark(holder, keyEl.textRange, FhirConnectColors.STRUCTURE_KEY)
+
+        if (value == null) return
 
         when {
             key == "name" && (kind == "method" || kind == "manualEntry") -> mark(holder, contentRange(value), FhirConnectColors.METHOD_NAME)

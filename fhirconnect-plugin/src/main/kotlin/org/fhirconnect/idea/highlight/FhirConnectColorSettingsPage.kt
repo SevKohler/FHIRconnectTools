@@ -17,7 +17,7 @@ class FhirConnectColorSettingsPage : ColorSettingsPage {
         AttributesDescriptor("Node id inside a path (at0001)", FhirConnectColors.NODE_ID),
         AttributesDescriptor("Literal value (criteria, manual value)", FhirConnectColors.LITERAL),
         AttributesDescriptor("Structure key (with, followedBy, slotArchetype, manual, …)", FhirConnectColors.STRUCTURE_KEY),
-        AttributesDescriptor("Condition key (fhirCondition, targetRoot, operator, …) - dark orange", FhirConnectColors.CONDITION_KEY),
+        AttributesDescriptor("Condition / manual key (fhirCondition, targetRoot, manual, path, value, …) - dark orange", FhirConnectColors.CONDITION_KEY),
         AttributesDescriptor("Method name", FhirConnectColors.METHOD_NAME),
         AttributesDescriptor("Enum value (add, overwrite, one of, NONE, …)", FhirConnectColors.ENUM_VALUE),
     )
@@ -65,11 +65,11 @@ mappings:
       <ckey>targetAttribute</ckey>: code.coding.code
       <ckey>operator</ckey>: <enum>one of</enum>
       <ckey>criteria</ckey>: <lit>11450-4</lit>
-    <skey>manual</skey>:
-      - name: <mname>profile</mname>
-        fhir:
-          - path: meta.profile
-            value: <lit>http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips</lit>
+    <ckey>manual</ckey>:
+      - <ckey>name</ckey>: <mname>profile</mname>
+        <ckey>fhir</ckey>:
+          - <ckey>path</ckey>: meta.profile
+            <ckey>value</ckey>: <lit>http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips</lit>
 """.trimIndent()
 
     override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, TextAttributesKey> = mapOf(
