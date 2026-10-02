@@ -7,17 +7,22 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
+import org.fhirconnect.idea.grammar.FhirConnectGrammar
 import org.fhirconnect.idea.resolve.Describe
 import org.fhirconnect.idea.resolve.MappingFiles
 import org.fhirconnect.idea.resolve.PathResolver
 import org.fhirconnect.idea.resolve.Side
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLMapping
 import org.jetbrains.yaml.psi.YAMLScalar
+import org.jetbrains.yaml.psi.YAMLSequenceItem
 
 /**
- * Hover / Ctrl+Q documentation for FHIRconnect values: the resolved openEHR or FHIR path with the
- * template node / profile element behind it, and for name references the file they point to.
+ * Hover / Ctrl+Q documentation for FHIRconnect files:
+ *  - on a key: what the key means (one line from the spec) and a link to the spec page,
+ *  - on a path value: the resolved openEHR / FHIR path with the template node / profile element behind it,
+ *  - on a name reference: the mapping file it points to.
  */
 class FhirConnectDocumentationProvider : AbstractDocumentationProvider() {
 
@@ -26,15 +31,22 @@ class FhirConnectDocumentationProvider : AbstractDocumentationProvider() {
 
     override fun getCustomDocumentationElement(editor: Editor, file: PsiFile, contextElement: PsiElement?, targetOffset: Int): PsiElement? {
         if (file !is YAMLFile || contextElement == null || !MappingFiles.isMappingFile(file)) return null
+        // on a key -> the key-value itself
+        val kvOfKey = PsiTreeUtil.getParentOfType(contextElement, YAMLKeyValue::class.java, false)
+        if (kvOfKey != null && kvOfKey.key != null && kvOfKey.key!!.textRange.contains(targetOffset.coerceAtLeast(kvOfKey.key!!.textRange.startOffset))
+            && (kvOfKey.value == null || !kvOfKey.value!!.textRange.contains(targetOffset))) {
+            return kvOfKey
+        }
         val scalar = PsiTreeUtil.getParentOfType(contextElement, YAMLScalar::class.java, false) ?: return null
         val kv = scalar.parent as? YAMLKeyValue ?: return null
-        val inList = (scalar.parent as? org.jetbrains.yaml.psi.YAMLSequenceItem) != null
+        val inList = (scalar.parent as? YAMLSequenceItem) != null
         return if (kv.keyText in pathKeys || kv.keyText in nameKeys || inList) scalar else null
     }
 
     override fun generateHoverDoc(element: PsiElement, originalElement: PsiElement?): String? = generateDoc(element, originalElement)
 
     override fun generateDoc(element: PsiElement?, originalElement: PsiElement?): String? {
+        if (element is YAMLKeyValue) return keyDoc(element)
         val scalar = element as? YAMLScalar ?: return null
         val file = scalar.containingFile as? YAMLFile ?: return null
         val ctx = MappingFiles.contextOf(file) ?: return null
@@ -43,9 +55,8 @@ class FhirConnectDocumentationProvider : AbstractDocumentationProvider() {
             val res = PathResolver.resolveKey(kv, ctx) ?: return null
             val info = if (res.side == Side.FHIR) Describe.fhir(res.resolved, ctx) else Describe.openehr(res.resolved, ctx)
             val status = when (info.found) {
-                true -> ""
                 false -> "<b>not found</b> in " + esc(if (res.side == Side.FHIR) (ctx.profile?.name ?: "FHIR R4") else (ctx.template?.templateId ?: "template")) + "<br>"
-                null -> ""
+                else -> ""
             }
             return DocumentationMarkup.DEFINITION_START + esc(res.resolved) + DocumentationMarkup.DEFINITION_END +
                 DocumentationMarkup.CONTENT_START + status + esc(info.tooltip).replace("\n", "<br>") + DocumentationMarkup.CONTENT_END +
@@ -79,6 +90,18 @@ class FhirConnectDocumentationProvider : AbstractDocumentationProvider() {
         }
         sb.append(DocumentationMarkup.CONTENT_END)
         return sb.toString()
+    }
+
+    /** what a FHIRconnect key means, from the spec */
+    private fun keyDoc(kv: YAMLKeyValue): String? {
+        val key = kv.keyText
+        val kind = (kv.parent as? YAMLMapping)?.let { FhirConnectGrammar.blockKind(it) } ?: ""
+        val doc = KeyDocs.lookup(kind, key) ?: KeyDocs.lookupAny(key) ?: return null
+        return DocumentationMarkup.DEFINITION_START + esc(key) + (if (kind.isNotEmpty()) "  <i>(${esc(kind)})</i>" else "") + DocumentationMarkup.DEFINITION_END +
+            DocumentationMarkup.CONTENT_START + esc(doc.summary) + DocumentationMarkup.CONTENT_END +
+            DocumentationMarkup.SECTIONS_START +
+            section("spec", "<a href=\"${doc.url}\">${esc(doc.page.removeSuffix(".html"))}</a>") +
+            DocumentationMarkup.SECTIONS_END
     }
 
     private fun section(title: String, value: String): String =

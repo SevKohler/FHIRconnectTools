@@ -513,6 +513,23 @@ mappings:
         assertEquals("/context/participations/performer", o.resolved)
     }
 
+    fun testKeyHoverDocumentation() {
+        val file = myFixture.configureFromTempProjectFile("kds/model/problem_diagnosis.v1.yml") as YAMLFile
+        val provider = org.fhirconnect.idea.docs.FhirConnectDocumentationProvider()
+        val pre = PsiTreeUtil.collectElementsOfType(file, YAMLKeyValue::class.java).first { it.keyText == "preprocessor" }
+        val doc = provider.generateDoc(pre, null)
+        assertNotNull(doc)
+        assertTrue(doc!!, doc.contains("before the mappings") && doc.contains("basics/preprocessor"))
+        // same key, different block: with.type vs top-level type
+        val withType = PsiTreeUtil.collectElementsOfType(file, YAMLKeyValue::class.java).first { it.keyText == "type" && (it.parent as? YAMLMapping)?.parent?.let { p -> (p as? YAMLKeyValue)?.keyText } == "with" }
+        assertTrue(provider.generateDoc(withType, null)!!.contains("iterate"))
+        val topType = PsiTreeUtil.collectElementsOfType(file, YAMLKeyValue::class.java).first { it.keyText == "type" && it.parent?.parent is org.jetbrains.yaml.psi.YAMLDocument }
+        assertTrue(provider.generateDoc(topType, null)!!.contains("model (archetype"))
+        // hovering the key of a key-value, not its value, selects the key-value as documentation target
+        val target = provider.getCustomDocumentationElement(myFixture.editor, file, pre.key!!.firstChild ?: pre.key!!, pre.key!!.textRange.startOffset)
+        assertTrue(target is YAMLKeyValue)
+    }
+
     fun testGhostText() {
         val set = org.fhirconnect.idea.completion.CandidateSet(Side.OPENEHR, "da", "da", listOf(
             org.fhirconnect.idea.completion.Candidate("data[at0001]/items[at0077]", emptyList(), "", "", false),

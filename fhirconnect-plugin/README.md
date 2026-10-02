@@ -32,6 +32,9 @@ Resolution follows the specification: `followedBy` children extend the parent's 
 
 ## Features
 
+- **Key documentation**: hovering (or Ctrl+Q on) any FHIRconnect key such as `preprocessor`,
+  `followedBy`, `slotArchetype`, `targetRoot` or `extension` shows a one-line explanation from the
+  specification, specific to the block the key is in, with a link to the spec page.
 - **Hover documentation** on any `fhir:` / `openehr:` / `targetRoot` / manual `path` value (mouse hover or
   Ctrl+Q): the resolved path, template label, RM type and occurrences for openEHR, element type,
   cardinality, binding and must-support for FHIR, codes and units. Hovering a `slotArchetype`,
