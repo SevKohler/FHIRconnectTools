@@ -302,7 +302,7 @@ def cond_text(m):
 
 
 # --------------------------------------------------------------------------- rows
-def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=None):
+def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=None, linker=None, model_name=None):
     for m in methods:
         if not isinstance(m, dict):
             continue
@@ -318,7 +318,14 @@ def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=N
         c = cond_text(m)
         if c:
             notes.append(c)
-        if origin:
+        # where this method lives: [name#method](file#method) is clickable on GitHub, in the IDEA
+        # preview and (to the method) in the IDEA editor with the plugin; see references/markdown-links.md
+        owner = origin or model_name
+        if owner and m.get("name") and linker:
+            link = linker(owner, m.get("name"))
+            if link:
+                notes.append(link)
+        elif origin:
             notes.append("*%s*" % origin)
         how = None
         oe_cell = oe_human(o, model_arch, opt)
@@ -358,7 +365,7 @@ def walk(methods, rtype, model_arch, opt, rows, pf="", po="", inherited_origin=N
         for key in ("followedBy", "reference"):
             sub = m.get(key)
             if isinstance(sub, dict):
-                walk(sub.get("mappings") or [], rtype, model_arch, opt, rows, f, o, origin)
+                walk(sub.get("mappings") or [], rtype, model_arch, opt, rows, f, o, origin, linker, model_name)
 
 
 def dedupe(rows):
@@ -418,14 +425,14 @@ def build_readme(ctx_path, lib):
                 pkg_dir = cand
                 break
     out.append("- Profile package: " + ("[`%s`](%s)" % (os.path.basename(pkg_dir), rel(pkg_dir)) if pkg_dir else "*not under resources/*"))
-    td = os.path.join(res_dir, "testdata", module) if res_dir else None
+    td = os.path.join(res_dir, "examples", module) if res_dir else None
     if td and os.path.isdir(td):
         counts = []
-        for sub, lab in (("fhir", "FHIR inputs"), ("openehr", "openEHR inputs"), ("testdata", "openFHIR outputs")):
+        for sub, lab in (("fhir", "FHIR"), ("openehr", "openEHR")):
             p = os.path.join(td, sub)
             if os.path.isdir(p):
-                counts.append("%d %s" % (sum(len(fs) for _, _, fs in os.walk(p)), lab))
-        out.append("- Test data: [`%s`](%s): %s" % (rel(td), rel(td), ", ".join(counts)))
+                counts.append("%d %s" % (len(os.listdir(p)), lab))
+        out.append("- Examples: [`%s`](%s): %s" % (rel(td), rel(td), ", ".join(counts) if counts else "–"))
     out.append("")
     out.append("## Archetypes")
     out.append("")
@@ -464,7 +471,14 @@ def build_readme(ctx_path, lib):
             out.append("Resources with `%s` = `%s` are skipped." % (fc.get("targetAttribute"), fc.get("criteria") or fc.get("criterias")))
             out.append("")
         rows = []
-        walk(methods, rtype if a == start else None, arch, opt, rows)
+
+        def linker(owner, method, _a=a):
+            r_ = lib.resolve(owner, ctx_dir)
+            if not r_:
+                return "*%s*" % owner
+            return "[`%s#%s`](%s#%s)" % (owner, method, rel(r_[0]), method)
+
+        walk(methods, rtype if a == start else None, arch, opt, rows, linker=linker, model_name=a)
         rows = dedupe(rows)
         out.append("| FHIR | openEHR | how | notes |")
         out.append("|---|---|---|---|")

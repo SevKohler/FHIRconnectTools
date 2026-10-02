@@ -52,6 +52,11 @@ Resolution follows the specification: `followedBy` children extend the parent's 
 - **Ctrl+click navigation** on `slotArchetype`, `slotContext`, `extends`, `start`, `appendTo` and the
   context lists. Inside a project folder, `slotArchetype` jumps to the project's extension of that model
   when the folder's context lists one; otherwise to the model. `appendTo` jumps to the target method.
+  In any other file (Markdown READMEs, alignment tables, reports, notes) Ctrl+click works too: on a
+  Markdown link to a mapping file (with `#method`, `#parent.child` or `#L42` anchors jumping to the
+  method or line), on a bare mapping name, `name#method`, a mapping file name or an archetype id. The
+  link convention the skills write is in `fhirconnect-mapping/references/markdown-links.md`; the same
+  links open the file on GitHub and in the IDEA Markdown preview.
 - **Keyword completion and skeletons**: enum values (`extension: add | append | overwrite`,
   `unidirectional`, `operator`, `type`, `create`, …) and the keys valid in the current block. Typing
   `- na` in a `mappings:` list inserts a whole method (`name`, `extension: add` in extension files,

@@ -64,8 +64,9 @@ rows for elements the table missed. Report changes as a short list.
 `python scripts/draft_alignment.py --diff <yaml files or project dir> --table <table.md> [--lib <mapping-lib>]`
 compares the table with the YAML: table rows marked mapped whose openEHR or FHIR path no method
 touches, and YAML methods whose paths have no table row. Report short form; each line is
-`table row | yaml method` → `what to do`. Paths are matched by at-code / last segment, so expect a few
-false positives on composite paths and say so.
+`table row | [name#method](path#method)` → `what to do` (link form from
+fhirconnect-mapping/references/markdown-links.md, clickable on GitHub and in IDEA). Paths are matched
+by at-code / last segment, so expect a few false positives on composite paths and say so.
 
 ## Output rules
 

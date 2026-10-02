@@ -1,5 +1,6 @@
 package org.fhirconnect.idea
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.fhirconnect.idea.index.FhirConnectIndex
@@ -528,6 +529,31 @@ mappings:
         // hovering the key of a key-value, not its value, selects the key-value as documentation target
         val target = provider.getCustomDocumentationElement(myFixture.editor, file, pre.key!!.firstChild ?: pre.key!!, pre.key!!.textRange.startOffset)
         assertTrue(target is YAMLKeyValue)
+    }
+
+    fun testGotoFromMarkdown() {
+        val md = myFixture.addFileToProject("kds/diagnose/notes.md",
+            "Model `EVALUATION.problem_diagnosis.v1`, ext [`KDS_problem_diagnose#dateTime`](KDS_problem_diagnose.yml#dateTime), " +
+            "file KDS_problem_qualifier.yml, archetype openEHR-EHR-CLUSTER.anatomical_location.v1, nested `EVALUATION.problem_diagnosis.v1#participations.performer`.")
+        myFixture.configureFromExistingVirtualFile(md.virtualFile)
+        val handler = org.fhirconnect.idea.navigation.FhirConnectGotoDeclarationHandler()
+        val text = md.text
+        fun target(word: String, skip: Int = 2): PsiElement? {
+            val off = text.indexOf(word) + skip
+            val el = md.findElementAt(off) ?: md
+            return handler.getGotoDeclarationTargets(el, off, myFixture.editor)?.firstOrNull()
+        }
+        assertEquals("problem_diagnosis.v1.yml", target("EVALUATION.problem_diagnosis.v1`")?.containingFile?.name)
+        // markdown link with a method anchor -> the method's name value in the target file
+        val link = target("KDS_problem_diagnose.yml#dateTime")
+        assertEquals("KDS_problem_diagnose.yml", link?.containingFile?.name)
+        assertEquals("dateTime", (link as? YAMLScalar)?.textValue)
+        assertEquals("KDS_problem_qualifier.yml", target("KDS_problem_qualifier.yml")?.containingFile?.name)
+        assertEquals("anatomical_location.v1.yml", target("openEHR-EHR-CLUSTER.anatomical_location.v1")?.containingFile?.name)
+        // bare name#parent.child
+        val nested = target("EVALUATION.problem_diagnosis.v1#participations.performer", 40)
+        assertEquals("performer", (nested as? YAMLScalar)?.textValue)
+        assertNull(target("Model", 1))
     }
 
     fun testGhostText() {

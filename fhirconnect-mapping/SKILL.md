@@ -123,6 +123,13 @@ Use `references/review.md` (checklist + report format). Steps:
    `POST /openfhir/toopenehr` / `tofhir` with sample data for a round trip. Offer it; never claim it
    ran if it did not.
 
+## Markdown you write
+
+READMEs, reports, notes: refer to mapping files and methods as `[name](relative/path.yml)` and
+`[name#method](relative/path.yml#method)` (see `references/markdown-links.md`). The same link works on
+GitHub, in the IDEA Markdown preview and, down to the method, in the IDEA editor with the FHIRconnect
+plugin. Bare backticked names are the fallback when the path is unknown.
+
 ## Rules that hold in every mode
 
 - **tl;dr first, details on request.** Every answer, review or hand-over leads with the verdict and

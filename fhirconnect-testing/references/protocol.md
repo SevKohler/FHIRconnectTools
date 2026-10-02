@@ -93,7 +93,7 @@ Ask in this order:
 Totals: <pass>/<n> pass (was <pass0>), <fail> fail, <error> error; <k> upload failures
 
 ### Fixed
-- <context> · <case> · <oracle> — <what was wrong> → <file>:<method> <one-line change>
+- <context> · <case> · <oracle> — <what was wrong> → [`<name>#<method>`](<relative path>#<method>) <one-line change>
 
 ### Still failing: mapping bugs I could not fix
 - <context> · <case> · <oracle> — <symptom>; <what I tried>; <what is needed>
@@ -116,4 +116,5 @@ Totals: <pass>/<n> pass (was <pass0>), <fail> fail, <error> error; <k> upload fa
 ```
 
 One line per item, concrete file and method names, no praise. Changed mapping files listed at the
-end so the user can diff them.
+end so the user can diff them. Mapping references as `[name#method](path#method)` relative to the
+report's location (fhirconnect-mapping/references/markdown-links.md), clickable on GitHub and in IDEA.
