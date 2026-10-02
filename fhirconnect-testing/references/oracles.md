@@ -1,6 +1,9 @@
 # Oracles
 
 What the harness checks per case, what a failure usually means, and how to read the report line.
+Every oracle judges *an engine's* output. The engine implements the spec and can be wrong; a failure
+is an indicator to investigate, and the spec decides. `diff-runs` between an openFHIR run and a
+dotnet-fhirconnect run separates engine behaviour from mapping behaviour.
 Cases live under `tests/<context>/fhir/` (run through `toopenehr`) or `tests/<context>/openehr/`
 (run through `tofhir`). Each oracle is on/off per context in `expectations.yml`.
 

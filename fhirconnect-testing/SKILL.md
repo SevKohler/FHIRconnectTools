@@ -18,9 +18,15 @@ argument-hint: "[run | <context> | <mapping file(s)> | scaffold <context> | gaps
 # FHIRconnect testing
 
 The mapping skill tells you whether a mapping is *well formed*. This skill tells you whether it
-*works*: a real openFHIR transforms real instances and the output is judged by oracles that need no
-hand-written expected output (round trip, value coverage, validation). Everything deterministic is
-in `scripts/openfhir_testkit.py`; your job is reading its compact reports and editing the mapping.
+*works on an engine*: openFHIR (REST, default) or dotnet-fhirconnect (CLI) transforms real instances
+and the output is judged by oracles that need no hand-written expected output (round trip, value
+coverage, validation). Everything deterministic is in `scripts/openfhir_testkit.py`; your job is
+reading its compact reports and editing the mapping.
+
+An engine implements the spec and can be wrong. A failing case is evidence, not proof, of a mapping
+bug. When the mapping reads correct against the spec and the mapping skill's grammar reference, run
+the same cases on the other engine (`run --engine dotnet`, then `diff-runs`); disagreement between
+engines is an engine bug or gap, and belongs in the report as such, not in the YAML.
 
 Skill files: `scripts/` (harness CLI + the two oracles it imports, Python 3.7+, PyYAML),
 `references/protocol.md` (iteration loop, guardrails, report format), `references/oracles.md`
@@ -30,9 +36,11 @@ Read `references/protocol.md` once per session before iterating.
 
 ## Preconditions
 
-1. **Local openFHIR.** `python scripts/openfhir_testkit.py -c <testkit.yml> status`. If down and
-   Docker is available: `... up` (adds `--ehrbase` when the user wants OPT validation). Never use the
-   public sandbox: the harness purges and re-uploads, and the sandbox is shared.
+1. **An engine.** `python scripts/openfhir_testkit.py -c <testkit.yml> status`. openFHIR down and
+   Docker available: `... up` (add `--ehrbase` when the user wants OPT validation). dotnet-fhirconnect
+   needs its CLI installed and `dotnet: {command, mapping}` in the config; as of October 2026 it is
+   pre-alpha and covers `EVALUATION.vital_status.v1` only, so use it for cross-checks, not as the
+   primary engine. Never use the public openFHIR sandbox: the harness purges and re-uploads.
 2. **A testkit.yml** next to the project's test cases (copy `assets/testkit.example.yml`): mapping
    dirs, OPT dir, cases dir. Ask only if you cannot find the project's mapping-lib folder and OPTs.
 3. **Cases.** `tests/<context>/{expectations.yml,fhir/,openehr/,golden/}`. None yet → **Scaffold**.

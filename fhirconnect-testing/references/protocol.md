@@ -70,7 +70,12 @@ Ask in this order:
    Propose `ignore_paths` for it; do not report it as a bug.
 4. Is it a shared-model issue (fails in several contexts the same way) or extension-specific?
    Fix shared issues in the model once.
-5. Only then: it is a mapping bug. Typical ones in `oracles.md` and the mapping skill's "Pitfalls".
+5. Does the mapping read correct against the spec (`grammar.md` in the mapping skill) and the
+   failure still appears? Run the case on the other engine (`run --engine dotnet --case <id>`, or
+   openfhir if dotnet was primary) and `diff-runs`. Pass on one, fail on the other → engine bug or
+   unimplemented feature. Report it under "Engine issues" with the spec section it violates; do not
+   bend the YAML to one engine's behaviour. If both engines agree the mapping is wrong, continue.
+6. Only then: it is a mapping bug. Typical ones in `oracles.md` and the mapping skill's "Pitfalls".
 
 ## Stop criteria
 
@@ -95,6 +100,9 @@ Totals: <pass>/<n> pass (was <pass0>), <fail> fail, <error> error; <k> upload fa
 
 ### Modelling decisions (need your call)
 - <context> · <value or path> — <why it cannot / should not map>; proposal: <ignore_paths entry | unidirectional | template change>
+
+### Engine issues (mapping is correct per spec)
+- <engine> · <context> · <case> — <behaviour>; spec says <section>; other engine: <pass|fail|not run>
 
 ### Proposed expectation changes (not applied)
 - <context>/expectations.yml: <change> — <reason>

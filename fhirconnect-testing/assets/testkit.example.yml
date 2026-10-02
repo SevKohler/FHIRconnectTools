@@ -1,7 +1,14 @@
 # Harness configuration. Copy next to your test cases as `testkit.yml`; paths are relative to this file.
 # Run everything with:  python <skill>/scripts/openfhir_testkit.py -c testkit.yml run
 
+engine: openfhir                         # default engine for `run`; override per run with --engine
 openfhir: http://localhost:8080          # local engine only (see assets/docker-compose.yml)
+
+# Optional second engine for cross-checks: dotnet-fhirconnect CLI (github.com/GinoCanessa/dotnet-fhirconnect).
+# It reads the mapping bundle from disk and takes no OPT, so the `template` oracle is skipped for it.
+# dotnet:
+#   command: dotnet fhirconnect
+#   mapping: ..                            # bundle root (model/ + project/ siblings are auto-merged)
 
 # Mapping sources, uploaded recursively. The file type (model / extension / context) is read from
 # the YAML `type:` field, not the filename. Shared models first, then the project.

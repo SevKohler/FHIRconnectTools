@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """openFHIR test harness for FHIRconnect mappings.
 
-Uploads OPTs + mapping files to a local openFHIR, runs every test case in both directions, checks
-each result against a set of oracles and writes compact JSON summaries an agent (or a human) can act
-on without reading whole compositions.
+Runs every test case in both directions through a FHIRconnect engine, checks each result against a
+set of oracles and writes compact JSON summaries an agent (or a human) can act on without reading
+whole compositions. Engines: `openfhir` (REST, default; OPTs + mappings are uploaded first) and
+`dotnet` (dotnet-fhirconnect CLI, reads the mapping bundle from disk). An engine implements the spec
+and can be wrong; run the same cases on both and treat disagreement as a possible engine bug.
 
 Usage:
   python openfhir_testkit.py [-c testkit.yml] <command> [options]
@@ -18,9 +20,10 @@ Commands
                              changed file with `upload path/to/file.yml` (POST is an upsert)
   cases [--context C]        list discovered test cases
   run [--context C] [--case N] [--direction fhir->openehr|openehr->fhir] [--no-upload] [--fail-fast]
+      [--engine openfhir|dotnet]   (default from config `engine`; the run id gets the engine as suffix)
   report [RUN] [--case N] [--all] [--max N]
                              failures of a run (default: latest); --case shows one case in full
-  diff-runs A B              regressions / fixes between two runs
+  diff-runs A B              regressions / fixes between two runs (also across engines)
   approve CONTEXT/DIR/NAME [RUN]
                              freeze a run's output as the golden file for that case (human step)
   scaffold CONTEXT --template-id ID [--profile URL]
@@ -43,8 +46,10 @@ import datetime as _dt
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.error
@@ -65,7 +70,9 @@ from semantic_diff import DEFAULT_IGNORE_KEYS as DIFF_IGNORE, compare  # noqa: E
 COMPOSE_FILE = os.path.join(HERE, "..", "assets", "docker-compose.yml")
 ORACLES = ("accepted", "template", "validation", "coverage", "roundtrip", "golden")
 DEFAULT_CONFIG = {
+    "engine": "openfhir",
     "openfhir": "http://localhost:8080",
+    "dotnet": None,                  # {command: "dotnet fhirconnect", mapping: <bundle dir>}
     "ehrbase": None,
     "fhir_validator": None,
     "mappings": [],
@@ -97,6 +104,8 @@ def load_config(path):
     cfg["cases"] = resolve(cfg["cases"])
     cfg["results"] = resolve(cfg["results"])
     cfg["openfhir"] = cfg["openfhir"].rstrip("/")
+    if cfg.get("dotnet") and cfg["dotnet"].get("mapping"):
+        cfg["dotnet"]["mapping"] = resolve(cfg["dotnet"]["mapping"])
     return cfg
 
 
@@ -156,8 +165,125 @@ class Http:
             return 0, "connection failed: %s" % e.reason, {}
 
 
-def engine(cfg):
+def openfhir_http(cfg):
     return Http(cfg["openfhir"], cfg.get("timeout", 90))
+
+
+class OpenFhirEngine:
+    """openFHIR over REST. State (OPTs, mappings) lives in the engine and is uploaded first."""
+    name = "openfhir"
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.http = openfhir_http(cfg)
+        self.where = cfg["openfhir"]
+
+    def health(self):
+        code, body, _ = self.http.request("GET", "/health")
+        return code == 200, "HTTP %s %s" % (code or "down", short(body, 120))
+
+    def counts(self):
+        out = {}
+        for label, path in (("OPTs", "/opt"), ("models", "/fc/model"), ("contexts", "/fc/context")):
+            code, body, _ = self.http.request("GET", path)
+            try:
+                out[label] = len(json.loads(body)) if code == 200 else "HTTP %s" % code
+            except ValueError:
+                out[label] = "?"
+        return out
+
+    def upload(self, paths=None):
+        return upload(self.cfg, paths)
+
+    def to_openehr(self, doc, template_id, force_template, req_id):
+        params = {"flat": "false", "templateId": template_id if force_template else None}
+        code, body, _ = self.http.request("POST", "/openfhir/toopenehr", json.dumps(doc), "application/json", params, {"x-req-id": req_id})
+        return code, body
+
+    def to_fhir(self, doc, template_id, req_id):
+        code, body, _ = self.http.request("POST", "/openfhir/tofhir", json.dumps(doc), "application/json", {"templateId": template_id}, {"x-req-id": req_id})
+        return code, body
+
+
+class DotnetEngine:
+    """dotnet-fhirconnect CLI (github.com/GinoCanessa/dotnet-fhirconnect). Stateless: it reads the mapping
+    bundle from disk, so `upload` runs its `validate` verb instead. The CLI takes no OPT / templateId
+    (output carries bare at-code element names), so the `template` oracle is skipped for it."""
+    name = "dotnet"
+
+    def __init__(self, cfg):
+        d = cfg.get("dotnet") or {}
+        if not d.get("mapping"):
+            sys.exit("engine dotnet needs config `dotnet: {command: ..., mapping: <bundle dir>}`")
+        self.cmd = shlex.split(d.get("command") or "dotnet fhirconnect")
+        self.mapping = d["mapping"]
+        self.timeout = cfg.get("timeout", 90)
+        self.where = "%s --mapping %s" % (" ".join(self.cmd), self.mapping)
+
+    def _run(self, args):
+        try:
+            p = subprocess.run(self.cmd + args, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=self.timeout)
+            return p.returncode, p.stdout, p.stderr
+        except FileNotFoundError:
+            return 127, "", "command not found: %s" % self.cmd[0]
+        except subprocess.TimeoutExpired:
+            return 124, "", "timeout after %ss" % self.timeout
+
+    def health(self):
+        rc, out, err = self._run(["--help"])
+        return rc == 0, "exit %s %s" % (rc, short(err or out, 120))
+
+    def counts(self):
+        return {"mapping files": sum(1 for _ in iter_files([self.mapping], (".yml", ".yaml")))}
+
+    def upload(self, paths=None):
+        rc, out, err = self._run(["validate", "--mapping", self.mapping, "--format", "json"])
+        failures = []
+        try:
+            report = json.loads(out)
+            for i in report.get("issues", []):
+                if i.get("severity") in ("Error", "Fatal"):
+                    failures.append({"file": i.get("filePath", self.mapping), "kind": i.get("code"), "http": None,
+                                     "error": "%s %s (line %s)" % (i.get("pointer", ""), i.get("message"), i.get("line"))})
+        except ValueError:
+            if rc != 0:
+                failures.append({"file": self.mapping, "kind": "validate", "http": None, "error": short(err or out)})
+        for f in failures:
+            print("  FAIL %s -> %s" % (os.path.basename(str(f["file"])), f["error"]))
+        print("validate: %d issue(s)" % len(failures))
+        return failures
+
+    def _transform(self, direction, doc):
+        fd, inp = tempfile.mkstemp(suffix=".json", prefix="fc-")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False)
+        try:
+            rc, out, err = self._run(["transform", "--direction", direction, "--mapping", self.mapping, "--input", inp, "--output", "-"])
+        finally:
+            try:
+                os.remove(inp)
+            except OSError:
+                pass
+        if rc == 0:
+            return 200, out
+        return {2: 400, 3: 400}.get(rc, 500), "dotnet exit %s: %s" % (rc, (err or out).strip())
+
+    def to_openehr(self, doc, template_id, force_template, req_id):
+        return self._transform("to-openehr", doc)
+
+    def to_fhir(self, doc, template_id, req_id):
+        return self._transform("to-fhir", doc)
+
+
+ENGINES = {"openfhir": OpenFhirEngine, "dotnet": DotnetEngine}
+
+
+def get_engine(cfg, override=None):
+    name = override or cfg.get("engine") or "openfhir"
+    if name not in ENGINES:
+        sys.exit("unknown engine %r (choose from %s)" % (name, ", ".join(ENGINES)))
+    return ENGINES[name](cfg)
 
 
 def is_local(url):
@@ -169,18 +295,13 @@ def is_local(url):
 # status / up / down / purge
 
 def cmd_status(cfg, args):
-    h = engine(cfg)
-    code, body, _ = h.request("GET", "/health")
-    print("openFHIR %s -> %s %s" % (cfg["openfhir"], code or "down", short(body, 120)))
-    if code != 200:
+    eng = get_engine(cfg, args.engine)
+    ok, msg = eng.health()
+    print("engine %s: %s -> %s" % (eng.name, eng.where, msg))
+    if not ok:
         return 2
-    for label, path in (("OPTs", "/opt"), ("models", "/fc/model"), ("contexts", "/fc/context")):
-        code, body, _ = h.request("GET", path)
-        try:
-            n = len(json.loads(body))
-        except ValueError:
-            n = "?"
-        print("  %-9s %s" % (label, n if code == 200 else "HTTP %s" % code))
+    for label, n in eng.counts().items():
+        print("  %-14s %s" % (label, n))
     if cfg.get("ehrbase"):
         eh = _ehrbase(cfg)
         code, body, _ = eh.request("GET", "/definition/template/adl1.4")
@@ -199,7 +320,7 @@ def cmd_up(cfg, args):
     rc = _compose(extra + ["up", "-d"])
     if rc != 0:
         return rc
-    h = engine(cfg)
+    h = openfhir_http(cfg)
     for _ in range(60):
         code, _, _ = h.request("GET", "/health")
         if code == 200:
@@ -219,7 +340,7 @@ def cmd_purge(cfg, args):
         sys.exit("purge wipes every OPT and mapping in the engine; pass --yes")
     if not is_local(cfg["openfhir"]) and not args.remote:
         sys.exit("refusing to purge a non-local engine (%s); pass --remote if you really mean it" % cfg["openfhir"])
-    code, body, _ = engine(cfg).request("GET", "/$purge")
+    code, body, _ = openfhir_http(cfg).request("GET", "/$purge")
     print("purge -> HTTP %s %s" % (code, short(body, 200)))
     return 0 if code == 200 else 1
 
@@ -252,8 +373,8 @@ def iter_files(paths, exts):
 
 
 def upload(cfg, paths=None):
-    """Upload OPTs then models/extensions then contexts. Returns list of failures."""
-    h = engine(cfg)
+    """openFHIR only: upload OPTs, then models/extensions, then contexts. Returns list of failures."""
+    h = openfhir_http(cfg)
     opt_paths = paths or cfg["opts"]
     map_paths = paths or cfg["mappings"]
     failures = []
@@ -299,10 +420,11 @@ def upload(cfg, paths=None):
 
 
 def cmd_upload(cfg, args):
-    code, body, _ = engine(cfg).request("GET", "/health")
-    if code != 200:
-        sys.exit("openFHIR not reachable at %s (%s)" % (cfg["openfhir"], short(body, 120)))
-    failures = upload(cfg, args.paths or None)
+    eng = get_engine(cfg, args.engine)
+    ok, msg = eng.health()
+    if not ok:
+        sys.exit("engine %s not reachable (%s)" % (eng.name, msg))
+    failures = eng.upload(args.paths or None)
     return 1 if failures else 0
 
 
@@ -436,7 +558,7 @@ def validate_fhir_cli(cfg, resource, scratch_dir):
 # ----------------------------------------------------------------------------------------------
 # run
 
-def run_case(cfg, h, case, out_dir):
+def run_case(cfg, eng, case, out_dir):
     exp = case["expectations"]
     oracles = exp["oracles"]
     tid = exp.get("template_id")
@@ -447,10 +569,9 @@ def run_case(cfg, h, case, out_dir):
 
     # --- transform
     if case["direction"] == "fhir->openehr":
-        params = {"flat": "false", "templateId": tid if exp.get("force_template") else None}
-        code, body, _ = h.request("POST", "/openfhir/toopenehr", json.dumps(inp), "application/json", params, {"x-req-id": req_id})
+        code, body = eng.to_openehr(inp, tid, exp.get("force_template"), req_id)
     else:
-        code, body, _ = h.request("POST", "/openfhir/tofhir", json.dumps(inp), "application/json", {"templateId": tid}, {"x-req-id": req_id})
+        code, body = eng.to_fhir(inp, tid, req_id)
     try:
         output = json.loads(body) if code == 200 else None
     except ValueError:
@@ -465,7 +586,7 @@ def run_case(cfg, h, case, out_dir):
     write_json(os.path.join(out_dir, "output.json"), output)
 
     # --- template id
-    if case["direction"] == "fhir->openehr" and oracles.get("template") and tid:
+    if case["direction"] == "fhir->openehr" and oracles.get("template") and tid and eng.name == "openfhir":
         actual = (output.get("archetype_details") or {}).get("template_id", {}).get("value") if isinstance(output, dict) else None
         res["oracles"]["template"] = {"ok": actual == tid, "expected": tid, "actual": actual}
 
@@ -493,10 +614,9 @@ def run_case(cfg, h, case, out_dir):
     # --- round trip
     if oracles.get("roundtrip"):
         if case["direction"] == "fhir->openehr":
-            code2, body2, _ = h.request("POST", "/openfhir/tofhir", json.dumps(output), "application/json", {"templateId": tid}, {"x-req-id": req_id + ":rt"})
+            code2, body2 = eng.to_fhir(output, tid, req_id + ":rt")
         else:
-            code2, body2, _ = h.request("POST", "/openfhir/toopenehr", json.dumps(output), "application/json",
-                                        {"flat": "false", "templateId": tid}, {"x-req-id": req_id + ":rt"})
+            code2, body2 = eng.to_openehr(output, tid, True, req_id + ":rt")
         try:
             rt = json.loads(body2) if code2 == 200 else None
         except ValueError:
@@ -525,24 +645,24 @@ def run_case(cfg, h, case, out_dir):
 
 
 def cmd_run(cfg, args):
-    h = engine(cfg)
-    code, body, _ = h.request("GET", "/health")
-    if code != 200:
-        sys.exit("openFHIR not reachable at %s (%s). Try `up` or start Docker." % (cfg["openfhir"], short(body, 120)))
-    run_id = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    eng = get_engine(cfg, args.engine)
+    ok, msg = eng.health()
+    if not ok:
+        sys.exit("engine %s not reachable: %s. Try `up` / start Docker (openfhir) or install the CLI (dotnet)." % (eng.name, msg))
+    run_id = _dt.datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + eng.name
     run_dir = os.path.join(cfg["results"], run_id)
     os.makedirs(run_dir, exist_ok=True)
     summary = {"run_id": run_id, "started": _dt.datetime.now().isoformat(timespec="seconds"),
-               "openfhir": cfg["openfhir"], "filter": {"context": args.context, "case": args.case, "direction": args.direction},
+               "engine": eng.name, "engine_where": eng.where, "filter": {"context": args.context, "case": args.case, "direction": args.direction},
                "upload_failures": [], "totals": {"pass": 0, "fail": 0, "error": 0}, "cases": []}
     if not args.no_upload:
-        summary["upload_failures"] = upload(cfg)
+        summary["upload_failures"] = eng.upload()
     cases = discover_cases(cfg, args.context, args.case, args.direction)
     if not cases:
         sys.exit("no cases matched")
     for c in cases:
         out_dir = os.path.join(run_dir, "cases", c["context"], c["dir"], c["name"])
-        r = run_case(cfg, h, c, out_dir)
+        r = run_case(cfg, eng, c, out_dir)
         summary["totals"][r["status"]] += 1
         summary["cases"].append(r)
         mark = {"pass": "PASS", "fail": "FAIL", "error": "ERR "}[r["status"]]
@@ -563,7 +683,7 @@ def cmd_run(cfg, args):
 
 def _write_summary_md(path, s):
     t = s["totals"]
-    lines = ["# Run %s" % s["run_id"], "", "%d pass, %d fail, %d error, %d upload failures" %
+    lines = ["# Run %s (engine: %s)" % (s["run_id"], s.get("engine", "openfhir")), "", "%d pass, %d fail, %d error, %d upload failures" %
              (t["pass"], t["fail"], t["error"], len(s["upload_failures"])), ""]
     if s["upload_failures"]:
         lines.append("## Upload failures")
@@ -598,7 +718,7 @@ def cmd_report(cfg, args):
     run, d = _run_dir(cfg, args.run)
     s = read_json(os.path.join(d, "summary.json"))
     t = s["totals"]
-    print("run %s: %d pass, %d fail, %d error, %d upload failures" % (run, t["pass"], t["fail"], t["error"], len(s["upload_failures"])))
+    print("run %s [%s]: %d pass, %d fail, %d error, %d upload failures" % (run, s.get("engine", "openfhir"), t["pass"], t["fail"], t["error"], len(s["upload_failures"])))
     for u in s["upload_failures"]:
         print("UPLOAD %s (%s) HTTP %s: %s" % (os.path.basename(u["file"]), u["kind"], u["http"], short(u["error"], 300)))
     n = args.max
@@ -642,8 +762,13 @@ def cmd_report(cfg, args):
 def cmd_diff_runs(cfg, args):
     _, da = _run_dir(cfg, args.a)
     _, db = _run_dir(cfg, args.b)
-    a = {c["id"]: c for c in read_json(os.path.join(da, "summary.json"))["cases"]}
-    b = {c["id"]: c for c in read_json(os.path.join(db, "summary.json"))["cases"]}
+    sa_, sb_ = read_json(os.path.join(da, "summary.json")), read_json(os.path.join(db, "summary.json"))
+    a = {c["id"]: c for c in sa_["cases"]}
+    b = {c["id"]: c for c in sb_["cases"]}
+    ea, eb = sa_.get("engine", "openfhir"), sb_.get("engine", "openfhir")
+    if ea != eb:
+        print("engines differ (%s vs %s): a case that passes on one and fails on the other points at an engine"
+              " bug or an unimplemented feature, not at the mapping. Check the spec before editing YAML." % (ea, eb))
     regressions, fixes, same = [], [], 0
     for cid in sorted(set(a) | set(b)):
         sa = a.get(cid, {}).get("status", "absent")
@@ -750,15 +875,16 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__.split("Commands", 1)[1])
     ap.add_argument("-c", "--config", default="testkit.yml")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status")
+    p = sub.add_parser("status"); p.add_argument("--engine", choices=list(ENGINES))
     p = sub.add_parser("up"); p.add_argument("--ehrbase", action="store_true")
     sub.add_parser("down")
     p = sub.add_parser("purge"); p.add_argument("--yes", action="store_true"); p.add_argument("--remote", action="store_true")
-    p = sub.add_parser("upload"); p.add_argument("paths", nargs="*")
+    p = sub.add_parser("upload"); p.add_argument("paths", nargs="*"); p.add_argument("--engine", choices=list(ENGINES))
     p = sub.add_parser("cases"); p.add_argument("--context")
     p = sub.add_parser("run")
     p.add_argument("--context"); p.add_argument("--case"); p.add_argument("--direction", choices=["fhir->openehr", "openehr->fhir"])
     p.add_argument("--no-upload", action="store_true"); p.add_argument("--fail-fast", action="store_true")
+    p.add_argument("--engine", choices=list(ENGINES), help="override config `engine`")
     p = sub.add_parser("report"); p.add_argument("run", nargs="?"); p.add_argument("--case"); p.add_argument("--all", action="store_true")
     p.add_argument("--max", type=int, default=10)
     p = sub.add_parser("diff-runs"); p.add_argument("a"); p.add_argument("b")
