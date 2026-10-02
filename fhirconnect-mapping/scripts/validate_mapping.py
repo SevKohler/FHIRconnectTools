@@ -363,8 +363,14 @@ def check_mapping(rep, where, m, ctx):
                      % (target, ", ".join(sorted(parent_methods))[:300]))
     if ext == "overwrite" and depth == 0:
         parent_methods = ctx.get("parent_methods")
-        if parent_methods is not None and name not in parent_methods:
-            rep.warn(where, "overwrite: no method named %r in the extended model - this behaves like add" % name)
+        if parent_methods is not None:
+            # overwrite replaces the model method with this name in place, nested methods included
+            leaf_names = set(p.split(".")[-1] for p in parent_methods)
+            if name not in leaf_names:
+                rep.warn(where, "overwrite: no method named %r in the extended model - this behaves like add" % name)
+            elif name not in parent_methods:
+                rep.info(where, "overwrite of nested model method %s - paths resolve against that method's parent"
+                         % next(p for p in sorted(parent_methods) if p.split(".")[-1] == name))
 
     # with ---------------------------------------------------------------------------
     with_ = m.get("with")

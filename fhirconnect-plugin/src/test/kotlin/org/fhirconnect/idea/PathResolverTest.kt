@@ -482,6 +482,35 @@ mappings:
         assertTrue(nodeTexts.toString(), nodeTexts.contains("at0077"))
     }
 
+    fun testOverwriteOfNestedMethodResolvesAgainstItsParent() {
+        // model problem_diagnosis: participations (fhir $resource.asserter, openehr $composition/context/participations)
+        //   > followedBy > performer ($fhirRoot / $openehrRoot/performer)
+        myFixture.addFileToProject("kds/diagnose/ow_ext.yml", """
+grammar: FHIRConnect/v1.0.0
+type: extension
+metadata:
+  name: ow_ext
+  version: 0.0.1
+spec:
+  system: FHIR
+  version: R4
+  extends: EVALUATION.problem_diagnosis.v1
+mappings:
+  - name: performer
+    extension: overwrite
+    with:
+      fhir: ${'$'}fhirRoot.reference
+      openehr: performer
+""".trimIndent())
+        FhirConnectIndex.getInstance(project).invalidate()
+        val file = myFixture.configureFromTempProjectFile("kds/diagnose/ow_ext.yml") as YAMLFile
+        val ctx = MappingFiles.contextOf(file)!!
+        val f = PathResolver.resolveKey(keyValue(file, "performer", "fhir", "\$fhirRoot.reference"), ctx)!!
+        assertEquals("Condition.asserter.reference", f.resolved)
+        val o = PathResolver.resolveKey(keyValue(file, "performer", "openehr", "performer"), ctx)!!
+        assertEquals("/context/participations/performer", o.resolved)
+    }
+
     fun testGhostText() {
         val set = org.fhirconnect.idea.completion.CandidateSet(Side.OPENEHR, "da", "da", listOf(
             org.fhirconnect.idea.completion.Candidate("data[at0001]/items[at0077]", emptyList(), "", "", false),

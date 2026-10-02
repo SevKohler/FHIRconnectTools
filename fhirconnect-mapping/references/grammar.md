@@ -192,6 +192,10 @@ creates one resource per EVENT of an OBSERVATION. Only one hierarchy per file.
     with: {...}
 ```
 
+`overwrite` and `appendTo` may name a **nested** model method; the replacement (or the appended
+children) then sits where the original sits, so its paths are relative to that method's parent,
+e.g. an overwrite of `medicationCode` under `eventsParent` is relative to `$archetype/data[at0001]/events[at0002]`.
+
 Extensions inherit everything from the model; they are applied after it. Model methods for nodes
 the template sets to `0..0` are simply never executed, so you do not need to overwrite them unless
 they would write wrong data on the way back.

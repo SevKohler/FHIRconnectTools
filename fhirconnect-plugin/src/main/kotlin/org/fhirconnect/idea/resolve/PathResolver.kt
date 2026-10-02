@@ -273,12 +273,11 @@ object PathResolver {
     fun parentPaths(item: YAMLSequenceItem, mapping: YAMLMapping, ctx: MappingContext, depth: Int = 0): ResolvedPaths {
         val parent = parentOf(item)
         if (parent == null) {
-            // top level: append methods start at the target method of the extended model
-            if (scalar(mapping, "extension") == "append") {
-                val target = scalar(mapping, "appendTo")
-                if (target != null) {
-                    appendTarget(target, ctx)?.let { return it }
-                }
+            when (scalar(mapping, "extension")) {
+                // append: the appended children hang below the target method of the extended model
+                "append" -> scalar(mapping, "appendTo")?.let { target -> appendTarget(target, ctx)?.let { return it } }
+                // overwrite: the method replaces the model method in place, so it is relative to that method's parent
+                "overwrite" -> scalar(mapping, "name")?.let { name -> overwriteParent(name, ctx)?.let { return it } }
             }
             return rootPaths(ctx)
         }
@@ -287,10 +286,25 @@ object PathResolver {
         return if (parent.viaReference != null) ResolvedPaths(parent.viaReference, base) else ResolvedPaths(p.fhir, base)
     }
 
-    private fun appendTarget(dotted: String, ctx: MappingContext): ResolvedPaths? {
+    private fun modelPsi(ctx: MappingContext): YAMLFile? {
         val modelInfo = ctx.info.extends?.let { ctx.snapshot.mappings[it] } ?: return null
-        val psi = PsiManager.getInstance(ctx.project).findFile(modelInfo.file) as? YAMLFile ?: return null
-        val modelCtx = MappingFiles.contextOf(psi) ?: return null
+        return PsiManager.getInstance(ctx.project).findFile(modelInfo.file) as? YAMLFile
+    }
+
+    /** the parent paths of the (first, document order) model method named [name], nested methods included */
+    private fun overwriteParent(name: String, ctx: MappingContext): ResolvedPaths? {
+        val psi = modelPsi(ctx) ?: return null
+        val target = PsiTreeUtil.collectElementsOfType(psi, YAMLSequenceItem::class.java).firstOrNull { item ->
+            methodItemOf(item) === item && scalar(item.value as? YAMLMapping, "name") == name
+        } ?: return null
+        val mapping = target.value as? YAMLMapping ?: return null
+        // the model's methods are resolved in the extension's context: same archetype, this project's template
+        return parentPaths(target, mapping, ctx, 1)
+    }
+
+    private fun appendTarget(dotted: String, ctx: MappingContext): ResolvedPaths? {
+        val psi = modelPsi(ctx) ?: return null
+        val modelCtx = ctx
         var seq = (MappingFiles.topMapping(psi)?.getKeyValueByKey("mappings")?.value as? YAMLSequence) ?: return null
         var found: YAMLSequenceItem? = null
         for (part in dotted.split('.')) {

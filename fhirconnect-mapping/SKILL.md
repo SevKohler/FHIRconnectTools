@@ -71,7 +71,8 @@ If the answer depends on at-codes or profile elements you do not have, say which
    Mind cardinality alignment (`references/recurrence.md`) and data type compatibility
    (`references/datatypes.md`). Mark lossy/duplicating methods `unidirectional`. Add a short `#` why.
 5. Run `python scripts/validate_mapping.py <file> --lib <mapping-lib>` and fix what it reports.
-   Show the diff-sized result, not the whole file, unless asked.
+   Show the diff-sized result, not the whole file, unless asked. If the project folder has a
+   generated `README.md`, regenerate it: `python scripts/mapping_readme.py <context file>`.
 
 ## Review
 
